@@ -10,7 +10,6 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
-    /* ТЁМНАЯ ТЕМА (ПО УМОЛЧАНИЮ) */
     :root {
       --bg: #09090b;
       --surface: #121216;
@@ -29,10 +28,8 @@
       --radius-sm: 8px;
       --radius-md: 14px;
       --radius-lg: 20px;
-      --shadow: rgba(0, 0, 0, 0.4);
     }
 
-    /* СВЕТЛАЯ ТЕМА */
     body.theme-light {
       --bg: #f8fafc;
       --surface: #ffffff;
@@ -48,7 +45,6 @@
       --bubble-bot: #ffffff;
       --bubble-user: #0f172a;
       --bubble-user-text: #ffffff;
-      --shadow: rgba(0, 0, 0, 0.06);
     }
 
     * {
@@ -57,7 +53,6 @@
       padding: 0;
       font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
       -webkit-font-smoothing: antialiased;
-      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
     }
 
     .mono { font-family: 'JetBrains Mono', monospace; }
@@ -80,12 +75,11 @@
       background: var(--bg);
       border-inline: 1px solid var(--border);
       position: relative;
-      box-shadow: 0 0 40px var(--shadow);
     }
 
     /* ШАПКА */
     header {
-      padding: 12px 18px;
+      padding: 12px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -96,36 +90,54 @@
       z-index: 40;
     }
 
-    .brand-wrap { display: flex; align-items: center; gap: 12px; }
+    .brand-wrap { display: flex; align-items: center; gap: 10px; }
 
     .sticker-crest {
-      width: 38px;
-      height: 38px;
+      width: 36px;
+      height: 36px;
       background: var(--accent);
       border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
     }
 
-    .sticker-crest svg { width: 20px; height: 20px; fill: var(--accent-inv); }
+    .sticker-crest svg { width: 18px; height: 18px; fill: var(--accent-inv); }
     .brand-title { font-size: 0.95rem; font-weight: 800; letter-spacing: -0.02em; }
     .brand-meta { font-size: 0.72rem; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
 
     .live-dot {
       width: 6px; height: 6px; background: var(--text); border-radius: 50%;
-      animation: pulse 2.5s infinite;
+      animation: pulse 2s infinite;
     }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-    .header-actions { display: flex; align-items: center; gap: 10px; }
+    /* КНОПКА НАЗАД (РЕШАЕТ ПРОБЛЕМУ БАГА НАВИГАЦИИ) */
+    .btn-back {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-back svg { width: 14px; height: 14px; stroke: currentColor; }
+    .btn-back:hover { background: var(--surface-hover); }
 
-    .btn-theme {
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+
+    .btn-icon {
       background: var(--surface); border: 1px solid var(--border); color: var(--text);
       width: 36px; height: 36px; border-radius: var(--radius-sm);
       display: flex; align-items: center; justify-content: center; cursor: pointer;
     }
-    .btn-theme svg { width: 16px; height: 16px; stroke: currentColor; }
+    .btn-icon svg { width: 16px; height: 16px; stroke: currentColor; }
 
     .header-avatar {
       width: 36px; height: 36px; border-radius: var(--radius-sm);
@@ -133,7 +145,7 @@
       background: var(--surface);
     }
 
-    /* НАВИГАЦИЯ */
+    /* ВКЛАДКИ */
     .nav-tabs {
       display: flex; padding: 6px 14px; background: var(--surface);
       border-bottom: 1px solid var(--border); gap: 4px; overflow-x: auto;
@@ -171,7 +183,7 @@
     }
     .action-chip svg { width: 12px; height: 12px; stroke: var(--text-dim); }
 
-    /* ЧАТЫ */
+    /* ЧАТ */
     .chat-container {
       flex: 1; overflow-y: auto; padding: 14px 16px; display: flex;
       flex-direction: column; gap: 14px;
@@ -213,7 +225,7 @@
       font-size: 0.75rem; margin-bottom: 4px;
     }
 
-    /* ПАНЕЛЬ ВВОДА */
+    /* ИНПУТ */
     .dock {
       padding: 10px 16px 14px; background: var(--bg); border-top: 1px solid var(--border);
       position: sticky; bottom: 0; z-index: 30; display: flex; flex-direction: column; gap: 6px;
@@ -270,7 +282,7 @@
       border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 700; cursor: pointer;
     }
 
-    /* МОДАЛЬНОЕ ОКНО ВХОДА */
+    /* МОДАЛКА ВХОДА */
     .auth-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(16px);
       display: flex; justify-content: center; align-items: center; padding: 20px; z-index: 100;
@@ -291,12 +303,19 @@
   <!-- ШАПКА -->
   <header>
     <div class="brand-wrap">
-      <div class="sticker-crest">
+      <!-- КНОПКА НАЗАД (ПОЯВЛЯЕТСЯ ПРИ ВХОДЕ В ПРОФИЛЬ / АДМИНКУ) -->
+      <button class="btn-back mono" id="header-back-btn" onclick="goBack()">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        НАЗАД
+      </button>
+
+      <div class="sticker-crest" id="header-crest">
         <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
       </div>
+      
       <div class="brand-info">
-        <div class="brand-title mono">8-B CORE</div>
-        <div class="brand-meta mono">
+        <div class="brand-title mono" id="header-title">8-B CORE</div>
+        <div class="brand-meta mono" id="header-subtitle">
           <div class="live-dot"></div>
           <span id="time-badge">СИНХРОНИЗАЦИЯ...</span>
         </div>
@@ -304,7 +323,8 @@
     </div>
 
     <div class="header-actions">
-      <button class="btn-theme" onclick="toggleTheme()" title="Переключить тему">
+      <!-- ТЕМА -->
+      <button class="btn-icon" onclick="toggleTheme()" title="Сменить тему">
         <svg id="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke-width="2" style="display:none;">
           <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
         </svg>
@@ -312,12 +332,14 @@
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
         </svg>
       </button>
+
+      <!-- АВАТАРКА -->
       <img id="nav-avatar" class="header-avatar" src="" onclick="switchTab('profile')">
     </div>
   </header>
 
   <!-- ВКЛАДКИ -->
-  <nav class="nav-tabs mono">
+  <nav class="nav-tabs mono" id="main-nav-tabs">
     <button class="tab-btn active" onclick="switchTab('ai')">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
       ИИ ЧАТ
@@ -334,13 +356,14 @@
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
       ПРОФИЛЬ
     </button>
+    <!-- ВКЛАДКА АДМИНА (ВИДНА ТОЛЬКО DUDO) -->
     <button class="tab-btn" id="admin-tab-btn" style="display:none;" onclick="switchTab('admin')">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       АДМИН
     </button>
   </nav>
 
-  <!-- ВКЛАДКА 1: ИИ ЧАТ -->
+  <!-- 1. ИИ ЧАТ -->
   <div class="view-screen active" id="view-ai">
     <div class="announcement-bar">
       <span class="sticker-badge mono">ИНФО</span>
@@ -348,9 +371,9 @@
     </div>
 
     <div class="quick-actions mono">
-      <div class="action-chip" onclick="quickAi('Объясни мне простыми словами суть текущей темы урока.')">⚡ ТЕОРИЯ</div>
-      <div class="action-chip" onclick="quickAi('Я решил задачу, проверь ход моих мыслей и вычисления: ')">✍️ ПРОВЕРКА</div>
-      <div class="action-chip" onclick="quickAi('Напомни рабочие формулы для 8 класса по этой теме.')">∑ ФОРМУЛЫ</div>
+      <div class="action-chip" onclick="quickAi('Объясни мне простыми словами текущую тему урока.')">⚡ ТЕОРИЯ</div>
+      <div class="action-chip" onclick="quickAi('Я решил задачу, проверь ход моих мыслей: ')">✍️ ПРОВЕРКА</div>
+      <div class="action-chip" onclick="quickAi('Напомни рабочие формулы для 8 класса.')">∑ ФОРМУЛЫ</div>
     </div>
 
     <div class="chat-container" id="ai-chat-stream">
@@ -360,7 +383,7 @@
         </div>
         <div class="msg-body">
           <div class="bubble-content">
-            Привет! Я ассистент 8 «Б». Напиши задачу или прикрепи фото страницы учебника.
+            Привет! Я настроен строго по школьной программе 8 «Б». Напиши вопрос или скинь фото задачи!
           </div>
         </div>
       </div>
@@ -385,7 +408,7 @@
     </div>
   </div>
 
-  <!-- ВКЛАДКА 2: ГРУППОВОЙ ЧАТ -->
+  <!-- 2. ГРУППОВОЙ ЧАТ -->
   <div class="view-screen" id="view-group">
     <div class="chat-container" id="group-chat-stream"></div>
     <div class="dock">
@@ -407,12 +430,12 @@
     </div>
   </div>
 
-  <!-- ВКЛАДКА 3: ДЗ -->
+  <!-- 3. ДЗ -->
   <div class="view-screen" id="view-homework">
     <div style="padding:16px; display:flex; flex-direction:column; gap:12px;" id="hw-list-container"></div>
   </div>
 
-  <!-- ВКЛАДКА 4: ПРОФИЛЬ -->
+  <!-- 4. ПРОФИЛЬ -->
   <div class="view-screen" id="view-profile">
     <div class="profile-view-wrap">
       <div class="profile-avatar-container">
@@ -424,63 +447,62 @@
       </div>
 
       <div class="profile-form">
-        <label class="mono" style="font-size:0.75rem; color:var(--text-dim)">НИКНЕЙМ В СИСТЕМЕ:</label>
+        <label class="mono" style="font-size:0.75rem; color:var(--text-dim)">ИМЯ В СИСТЕМЕ:</label>
         <input type="text" id="profile-name-input" class="form-input">
         <button class="btn-solid mono" onclick="saveProfile()">СОХРАНИТЬ ПРОФИЛЬ</button>
-        <button class="btn-solid mono" style="background:var(--border); color:var(--text);" onclick="logout()">ВЫЙТИ ИЗ АККАУНТА</button>
+        <button class="btn-solid mono" style="background:var(--surface-elevated); color:var(--text); border:1px solid var(--border);" onclick="logout()">ВЫЙТИ ИЗ АККАУНТА</button>
       </div>
     </div>
   </div>
 
-  <!-- ВКЛАДКА 5: АДМИНКА -->
+  <!-- 5. АДМИНКА (СТРОГО ТОЛЬКО ДЛЯ DUDO) -->
   <div class="view-screen" id="view-admin">
     <div style="padding:16px; display:flex; flex-direction:column; gap:16px;">
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
-        <div class="mono" style="font-weight:700; font-size:0.85rem;">📚 ДОБАВИТЬ ЗАДАНИЕ</div>
+        <div class="mono" style="font-weight:700; font-size:0.85rem;">📚 ДОБАВИТЬ ЗАДАНИЕ В ДЗ</div>
         <input type="text" id="adm-subj" class="form-input" placeholder="Предмет (например: Алгебра)">
         <input type="text" id="adm-task" class="form-input" placeholder="Задание (например: № 215, 218)">
         <input type="text" id="adm-date" class="form-input mono" placeholder="Срок сдачи (например: Четверг)">
-        <button class="btn-solid mono" onclick="addHwAdmin()">ОПУБЛИКОВАТЬ</button>
+        <button class="btn-solid mono" onclick="addHwAdmin()">ОПУБЛИКОВАТЬ ДЗ</button>
       </div>
 
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
-        <div class="mono" style="font-weight:700; font-size:0.85rem;">👥 СБРОС УСТРОЙСТВ УЧЕНИКОВ</div>
+        <div class="mono" style="font-weight:700; font-size:0.85rem;">👥 СБРОС УСТРОЙСТВ ОДНОКЛАССНИКОВ</div>
         <div id="adm-users-list"></div>
       </div>
 
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
-        <div class="mono" style="font-weight:700; font-size:0.85rem;">🧠 СИСТЕМНЫЙ ПРОМПТ И БАННЕР</div>
-        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">ПРОМПТ:</label>
+        <div class="mono" style="font-weight:700; font-size:0.85rem;">🧠 МОЗГИ ИИ И БАННЕР КЛАССА</div>
+        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">СИСТЕМНЫЙ ПРОМПТ:</label>
         <textarea id="adm-prompt" class="form-input" rows="2"></textarea>
-        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">ФАКТЫ:</label>
+        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">ФАКТЫ И ИНСАЙДЫ УЧИТЕЛЕЙ:</label>
         <textarea id="adm-facts" class="form-input" rows="2"></textarea>
-        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">БАННЕР:</label>
+        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">СРОЧНЫЙ БАННЕР:</label>
         <input type="text" id="adm-banner" class="form-input">
-        <button class="btn-solid mono" onclick="saveSettingsAdmin()">СОХРАНИТЬ</button>
+        <button class="btn-solid mono" onclick="saveSettingsAdmin()">СОХРАНИТЬ НАСТРОЙКИ</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ОКНО ВХОДА (DEVICE LOCK) -->
+<!-- ОКНО ВХОДА -->
 <div class="auth-overlay" id="auth-modal">
   <div class="auth-box">
     <div style="display:flex; align-items:center; gap:10px;">
       <div class="sticker-crest"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg></div>
       <div>
         <div style="font-weight:800; font-size:1.1rem;">8-B CORE</div>
-        <div style="font-size:0.75rem; color:var(--text-dim);">Вход только для 8 «Б»</div>
+        <div style="font-size:0.75rem; color:var(--text-dim);">Закрытая платформа 8 «Б»</div>
       </div>
     </div>
     <div class="alert-error" id="auth-err"></div>
     <input type="text" id="auth-login" class="form-input" placeholder="Логин (например: dudo)">
     <input type="password" id="auth-pass" class="form-input" placeholder="Пароль">
-    <button class="btn-solid mono" onclick="doLogin()">ВОЙТИ НА ЭТОМ УСТРОЙСТВЕ</button>
+    <button class="btn-solid mono" onclick="doLogin()">ВОЙТИ НА ЭТОМ ТЕЛЕФОНЕ</button>
   </div>
 </div>
 
 <script>
-  // DEVICE TOKEN
   let deviceToken = localStorage.getItem('school_dev_token');
   if (!deviceToken) {
     deviceToken = crypto.randomUUID();
@@ -504,10 +526,14 @@
   // СЕССИЯ
   const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23888'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E";
   let currentUser = JSON.parse(localStorage.getItem('school_user') || 'null');
+  let lastTab = 'ai'; // Запоминает экран для возврата кнопкой Назад
 
   if (currentUser) {
     document.getElementById('auth-modal').style.display = 'none';
-    if (currentUser.role === 'admin') document.getElementById('admin-tab-btn').style.display = 'flex';
+    // Проверка: админка строго для dudo
+    if (currentUser.role === 'admin' && currentUser.name.toLowerCase() === 'dudo') {
+      document.getElementById('admin-tab-btn').style.display = 'flex';
+    }
     updateProfileUI();
     initApp();
   }
@@ -529,7 +555,8 @@
         currentUser = {
           name: data.username,
           role: data.role,
-          avatar: data.avatar || defaultAvatar
+          avatar: data.avatar || defaultAvatar,
+          token: data.token
         };
         localStorage.setItem('school_user', JSON.stringify(currentUser));
         location.reload();
@@ -538,7 +565,7 @@
         errDiv.style.display = 'block';
       }
     } catch(e) {
-      errDiv.innerText = "Ошибка связи с сервером";
+      errDiv.innerText = "Ошибка соединения с сервером";
       errDiv.style.display = 'block';
     }
   }
@@ -548,7 +575,6 @@
     location.reload();
   }
 
-  // ПРОФИЛЬ
   function updateProfileUI() {
     if (!currentUser) return;
     document.getElementById('nav-avatar').src = currentUser.avatar;
@@ -576,26 +602,65 @@
   async function saveProfile() {
     const newName = document.getElementById('profile-name-input').value.trim();
     if (!newName) return;
-    await fetch('/api/profile/update', {
+    const res = await fetch('/api/profile/update', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ username: currentUser.name, new_name: newName, avatar: currentUser.avatar })
     });
-    currentUser.name = newName;
-    localStorage.setItem('school_user', JSON.stringify(currentUser));
-    updateProfileUI();
-    alert("Профиль сохранен!");
+    const d = await res.json();
+    if (d.success) {
+      currentUser.name = newName;
+      localStorage.setItem('school_user', JSON.stringify(currentUser));
+      updateProfileUI();
+      alert("Профиль обновлен!");
+    } else {
+      alert(d.error || "Ошибка сохранения");
+    }
   }
 
-  // НАВИГАЦИЯ ВКЛАДОК
+  // НАВИГАЦИЯ И КНОПКА «НАЗАД»
   function switchTab(t) {
+    const currentActive = document.querySelector('.view-screen.active');
+    if (currentActive) {
+      const currentId = currentActive.id.replace('view-', '');
+      if (currentId !== 'profile' && currentId !== 'admin') {
+        lastTab = currentId;
+      }
+    }
+
     const tabs = ['ai', 'group', 'homework', 'profile', 'admin'];
     document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', tabs[i] === t));
     document.querySelectorAll('.view-screen').forEach(s => s.classList.remove('active'));
     document.getElementById(`view-${t}`).classList.add('active');
 
+    const backBtn = document.getElementById('header-back-btn');
+    const crest = document.getElementById('header-crest');
+    const headerTitle = document.getElementById('header-title');
+    const headerSub = document.getElementById('header-subtitle');
+
+    if (t === 'profile') {
+      backBtn.style.display = 'flex';
+      crest.style.display = 'none';
+      headerTitle.innerText = "ПРОФИЛЬ";
+      headerSub.style.display = 'none';
+    } else if (t === 'admin') {
+      backBtn.style.display = 'flex';
+      crest.style.display = 'none';
+      headerTitle.innerText = "АДМИНКА";
+      headerSub.style.display = 'none';
+      loadAdminData();
+    } else {
+      backBtn.style.display = 'none';
+      crest.style.display = 'flex';
+      headerTitle.innerText = "8-B CORE";
+      headerSub.style.display = 'flex';
+    }
+
     if (t === 'group') loadGroupMessages();
-    if (t === 'admin') loadAdminData();
+  }
+
+  function goBack() {
+    switchTab(lastTab || 'ai');
   }
 
   // ПРИКРЕПЛЕНИЕ ФАЙЛОВ
@@ -625,7 +690,7 @@
     document.getElementById(`${scope}-file-input`).value = '';
   }
 
-  // ЧАТ С ИИ
+  // ИИ ЧАТ
   async function sendAiMessage() {
     const input = document.getElementById('ai-input');
     const txt = input.value.trim();
@@ -652,16 +717,26 @@
 
   // ГРУППОВОЙ ЧАТ
   async function loadGroupMessages() {
-    const res = await fetch('/api/group/messages');
-    const msgs = await res.json();
-    const box = document.getElementById('group-chat-stream');
-    box.innerHTML = '';
-    msgs.forEach(m => {
-      const isMe = m.sender === currentUser.name;
-      const att = m.attachment_data ? { data: m.attachment_data, name: m.attachment_name, isImage: m.is_image } : null;
-      appendMsg('group', m.text, isMe ? 'user' : 'other', m.sender, m.avatar || defaultAvatar, att);
-    });
+    try {
+      const res = await fetch('/api/group/messages');
+      const msgs = await res.json();
+      const box = document.getElementById('group-chat-stream');
+      box.innerHTML = '';
+      msgs.forEach(m => {
+        const isMe = m.sender.toLowerCase() === currentUser.name.toLowerCase();
+        const att = m.attachment_data ? { data: m.attachment_data, name: m.attachment_name, isImage: m.is_image } : null;
+        appendMsg('group', m.text, isMe ? 'user' : 'other', m.sender, m.avatar || defaultAvatar, att);
+      });
+    } catch(e) {}
   }
+
+  // Авто-обновление чата класса раз в 4 секунды
+  setInterval(() => {
+    const groupView = document.getElementById('view-group');
+    if (groupView && groupView.classList.contains('active')) {
+      loadGroupMessages();
+    }
+  }, 4000);
 
   async function sendGroupMessage() {
     const input = document.getElementById('group-input');
@@ -714,7 +789,6 @@
     box.scrollTop = box.scrollHeight;
   }
 
-  // ЗАГРУЗКА ДАШБОРДА
   async function initApp() {
     const res = await fetch('/api/dashboard');
     const d = await res.json();
@@ -724,18 +798,22 @@
 
     const hwBox = document.getElementById('hw-list-container');
     hwBox.innerHTML = '';
-    d.homework.forEach(h => {
-      hwBox.innerHTML += `
-        <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:8px;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span class="mono" style="background:var(--accent); color:var(--accent-inv); font-size:0.7rem; font-weight:800; padding:2px 8px; border-radius:4px;">${h.subject}</span>
-            <span class="mono" style="font-size:0.72rem; color:var(--text-dim);">ДО: ${h.deadline.toUpperCase()}</span>
+    if (d.homework.length === 0) {
+      hwBox.innerHTML = '<div class="mono" style="color:var(--text-dim); text-align:center; padding:30px;">Заданий пока нет 🎉</div>';
+    } else {
+      d.homework.forEach(h => {
+        hwBox.innerHTML += `
+          <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="mono" style="background:var(--accent); color:var(--accent-inv); font-size:0.7rem; font-weight:800; padding:2px 8px; border-radius:4px;">${h.subject}</span>
+              <span class="mono" style="font-size:0.72rem; color:var(--text-dim);">ДО: ${h.deadline.toUpperCase()}</span>
+            </div>
+            <div style="font-size:0.88rem;">${h.task}</div>
+            <button class="btn-solid mono" style="align-self:flex-end; padding:6px 12px; font-size:0.75rem;" onclick="solveHw('${h.subject}', '${h.task}')">РАЗОБРАТЬ С ИИ →</button>
           </div>
-          <div style="font-size:0.88rem;">${h.task}</div>
-          <button class="btn-solid mono" style="align-self:flex-end; padding:6px 12px; font-size:0.75rem;" onclick="solveHw('${h.subject}', '${h.task}')">РАЗОБРАТЬ С ИИ →</button>
-        </div>
-      `;
-    });
+        `;
+      });
+    }
   }
 
   function solveHw(s, t) {
@@ -743,9 +821,19 @@
     quickAi(`Помоги разобрать задание по предмету ${s}: ${t}`);
   }
 
-  // АДМИНКА
+  // АДМИНКА (ТОЛЬКО DUDO)
   async function loadAdminData() {
-    const res = await fetch('/api/admin/data');
+    if (!currentUser || currentUser.name.toLowerCase() !== 'dudo') return;
+    const res = await fetch('/api/admin/data', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ token: currentUser.token })
+    });
+    if (!res.ok) {
+      alert("Доступ запрещен. Только для dudo.");
+      switchTab('ai');
+      return;
+    }
     const d = await res.json();
 
     document.getElementById('adm-prompt').value = d.system_prompt;
@@ -768,25 +856,26 @@
     await fetch('/api/admin/reset_device', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ user_id: id })
+      body: JSON.stringify({ token: currentUser.token, user_id: id })
     });
     loadAdminData();
   }
 
   async function addHwAdmin() {
-    const s = document.getElementById('adm-subj').value;
-    const t = document.getElementById('adm-task').value;
-    const d = document.getElementById('adm-date').value;
+    const s = document.getElementById('adm-subj').value.trim();
+    const t = document.getElementById('adm-task').value.trim();
+    const d = document.getElementById('adm-date').value.trim();
     if (!s || !t) return;
+
     await fetch('/api/admin/save_hw', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ subject: s, task: t, deadline: d })
+      body: JSON.stringify({ token: currentUser.token, subject: s, task: t, deadline: d })
     });
     document.getElementById('adm-subj').value = '';
     document.getElementById('adm-task').value = '';
     document.getElementById('adm-date').value = '';
-    alert("Задание добавлено!");
+    alert("Задание опубликовано!");
     initApp();
   }
 
@@ -795,12 +884,13 @@
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        prompt: document.getElementById('adm-prompt').value,
+        token: currentUser.token,
+        system_prompt: document.getElementById('adm-prompt').value,
         facts: document.getElementById('adm-facts').value,
         banner: document.getElementById('adm-banner').value
       })
     });
-    alert("Сохранено!");
+    alert("Настройки применены!");
     initApp();
   }
 </script>
