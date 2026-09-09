@@ -5,13 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>8-B CORE // PLATFORM</title>
 
-  <!-- Шрифты: Plus Jakarta Sans и JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
-    /* ТЁМНАЯ ТЕМА (ПО ДЕФОЛТУ) */
+    /* ТЁМНАЯ ТЕМА */
     :root {
       --bg: #09090b;
       --surface: #121216;
@@ -60,7 +59,6 @@
 
     .mono { font-family: 'JetBrains Mono', monospace; }
 
-    /* Кастомный скроллбар */
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
@@ -122,7 +120,7 @@
     }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-    /* КНОПКА НАЗАД */
+    /* КНОПКА «НАЗАД» */
     .btn-back {
       display: none;
       align-items: center;
@@ -154,7 +152,7 @@
       background: var(--surface);
     }
 
-    /* НАВИГАЦИОННЫЕ ВКЛАДКИ */
+    /* ВКЛАДКИ */
     .nav-tabs {
       display: flex; padding: 6px 14px; background: var(--surface);
       border-bottom: 1px solid var(--border); gap: 4px; overflow-x: auto;
@@ -171,7 +169,11 @@
     .tab-btn.active { background: var(--accent); color: var(--accent-inv); }
     .tab-btn.active svg { stroke: var(--accent-inv); }
 
-    /* ЭКРАНЫ */
+    /* ВКЛАДКА АДМИНА — ПО УМОЛЧАНИЮ ВСЕГДА ВЫРЕЗАНА ИЗ ВИДА */
+    #admin-tab-btn {
+      display: none !important;
+    }
+
     .view-screen { display: none; flex-direction: column; flex: 1; }
     .view-screen.active { display: flex; }
 
@@ -212,12 +214,12 @@
     }
     .avatar-bubble svg { width: 16px; height: 16px; fill: var(--text-dim); }
 
-    .msg-body { display: flex; flex-direction: column; gap: 4px; }
+    .msg-body { display: flex; flex-direction: column; gap: 4px; max-width: 100%; }
     .msg-meta { font-size: 0.7rem; color: var(--text-dim); display: flex; gap: 6px; }
 
     .bubble-content {
       padding: 10px 14px; font-size: 0.88rem; line-height: 1.5;
-      word-break: break-word; border-radius: 14px;
+      word-break: break-word; border-radius: 14px; white-space: pre-wrap;
     }
     .message-wrap.user .bubble-content {
       background: var(--bubble-user); color: var(--bubble-user-text);
@@ -228,6 +230,27 @@
       color: var(--text); border-bottom-left-radius: 4px;
     }
 
+    /* АНИМАЦИЯ «ИИ ДУМАЕТ» */
+    .thinking-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+    }
+    .thinking-dots { display: inline-flex; gap: 4px; }
+    .thinking-dot {
+      width: 5px; height: 5px; border-radius: 50%; background: var(--text-dim);
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+    .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1.1); opacity: 1; }
+    }
+
     .msg-img-preview { max-width: 220px; border-radius: 8px; margin-bottom: 6px; border: 1px solid var(--border); display: block; }
     .msg-file-pill {
       display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px;
@@ -235,11 +258,37 @@
       font-size: 0.75rem; margin-bottom: 4px;
     }
 
-    /* ИНПУТ DOCK */
+    /* ПАНЕЛЬ ВВОДА */
     .dock {
       padding: 10px 16px 14px; background: var(--bg); border-top: 1px solid var(--border);
-      position: sticky; bottom: 0; z-index: 30; display: flex; flex-direction: column; gap: 6px;
+      position: sticky; bottom: 0; z-index: 30; display: flex; flex-direction: column; gap: 8px;
     }
+
+    .floating-stop-wrap {
+      display: none;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .btn-stop-stream {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border-focus);
+      color: var(--text);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    .btn-stop-stream:hover {
+      background: var(--surface-hover);
+      border-color: var(--accent);
+    }
+    .btn-stop-stream svg { width: 12px; height: 12px; fill: currentColor; }
 
     .file-preview-shelf {
       display: none; align-items: center; gap: 8px; padding: 6px 10px;
@@ -259,6 +308,7 @@
     }
     .btn-attach svg { width: 18px; height: 18px; stroke: currentColor; }
     .text-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-size: 0.9rem; }
+
     .btn-send {
       background: var(--accent); color: var(--accent-inv); border: none; width: 36px; height: 36px;
       border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;
@@ -310,10 +360,9 @@
 <body>
 
 <div class="app-frame">
-  <!-- ВЕРХНЯЯ ШАПКА -->
+  <!-- ШАПКА -->
   <header>
     <div class="brand-wrap">
-      <!-- КНОПКА «НАЗАД» -->
       <button class="btn-back mono" id="header-back-btn" onclick="goBack()">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         НАЗАД
@@ -364,8 +413,8 @@
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
       ПРОФИЛЬ
     </button>
-    <!-- ТОЛЬКО ДЛЯ DUDO -->
-    <button class="tab-btn" id="admin-tab-btn" style="display:none;" onclick="switchTab('admin')">
+    <!-- АДМИН (СКРЫТ ДЛЯ ВСЕХ ПО УМОЛЧАНИЮ) -->
+    <button class="tab-btn" id="admin-tab-btn" onclick="switchTab('admin')">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       АДМИН
     </button>
@@ -384,32 +433,29 @@
       <div class="action-chip" onclick="quickAi('Напомни рабочие формулы для 8 класса.')">∑ ФОРМУЛЫ</div>
     </div>
 
-    <div class="chat-container" id="ai-chat-stream">
-      <div class="message-wrap bot">
-        <div class="avatar-bubble">
-          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><circle cx="15.5" cy="8.5" r="1.5"></circle><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-        </div>
-        <div class="msg-body">
-          <div class="bubble-content">
-            Привет! Я настроен строго по школьной программе 8 «Б». Знаю точное время и все задания из базы. Напиши задачу или скинь фото!
-          </div>
-        </div>
-      </div>
-    </div>
+    <div class="chat-container" id="ai-chat-stream"></div>
 
     <div class="dock">
+      <div class="floating-stop-wrap" id="ai-stop-wrap">
+        <button class="btn-stop-stream mono" onclick="stopAiStream()">
+          <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+          Остановить ответ
+        </button>
+      </div>
+
       <div class="file-preview-shelf" id="ai-file-preview">
         <img id="ai-file-thumb" src="">
         <span id="ai-file-name" class="mono">файл.jpg</span>
         <button class="btn-remove-attachment" onclick="clearAttachment('ai')">✕</button>
       </div>
+      
       <div class="input-shell">
         <input type="file" id="ai-file-input" style="display:none;" onchange="handleFileSelected(event, 'ai')">
         <button class="btn-attach" onclick="document.getElementById('ai-file-input').click()" title="Прикрепить файл или фото">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
         </button>
         <input type="text" class="text-input" id="ai-input" placeholder="Задай вопрос или спроси про ДЗ..." onkeydown="if(event.key==='Enter') sendAiMessage()">
-        <button class="btn-send" onclick="sendAiMessage()">
+        <button class="btn-send" id="ai-send-btn" onclick="sendAiMessage()">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </button>
       </div>
@@ -463,10 +509,23 @@
     </div>
   </div>
 
-  <!-- 5. АДМИНКА (СТРОГО ТОЛЬКО ДЛЯ DUDO) -->
+  <!-- 5. АДМИНКА (СТРОГО ТОЛЬКО DUDO) -->
   <div class="view-screen" id="view-admin">
     <div style="padding:16px; display:flex; flex-direction:column; gap:16px;">
       
+      <!-- ИНСПЕКТОР ЧАТОВ УЧЕНИКОВ (ШПИОНСКАЯ ПАНЕЛЬ) -->
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
+        <div class="mono" style="font-weight:700; font-size:0.85rem;">🕵️ ПРОСМОТР ДИАЛОГОВ УЧЕНИКОВ С ИИ</div>
+        <div style="display:flex; gap:8px;">
+          <select id="adm-inspect-user-select" class="form-input mono" style="flex:1;">
+            <option value="">-- Выберите ученика --</option>
+          </select>
+          <button class="btn-solid mono" style="padding:8px 14px;" onclick="loadInspectedUserChat()">СМОТРЕТЬ</button>
+        </div>
+        <!-- Окно отображения переписки -->
+        <div id="adm-chat-history-box" style="display:none; max-height:300px; overflow-y:auto; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+
       <!-- ПОДКЛЮЧЕНИЕ ИИ -->
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
         <div class="mono" style="font-weight:700; font-size:0.85rem;">🤖 ПОДКЛЮЧЕНИЕ НЕЙРОСЕТИ (OPENAI ФОРМАТ)</div>
@@ -564,8 +623,9 @@
 
   if (currentUser) {
     document.getElementById('auth-modal').style.display = 'none';
+    // ВКЛАДКА АДМИНА ВИДНА СТРОГО И ТОЛЬКО DUDO
     if (currentUser.role === 'admin' && currentUser.name.toLowerCase() === 'dudo') {
-      document.getElementById('admin-tab-btn').style.display = 'flex';
+      document.getElementById('admin-tab-btn').style.setProperty('display', 'flex', 'important');
     }
     updateProfileUI();
     initApp();
@@ -651,8 +711,13 @@
     }
   }
 
-  // НАВИГАЦИЯ И КНОПКА «НАЗАД»
+  // НАВИГАЦИЯ
   function switchTab(t) {
+    // ЖЕСТКИЙ ЗАПРЕТ ВХОДА В АДМИНКУ ДЛЯ НЕ-DUDO
+    if (t === 'admin' && (!currentUser || currentUser.role !== 'admin' || currentUser.name.toLowerCase() !== 'dudo')) {
+      return;
+    }
+
     const currentActive = document.querySelector('.view-screen.active');
     if (currentActive) {
       const currentId = currentActive.id.replace('view-', '');
@@ -723,7 +788,76 @@
     document.getElementById(`${scope}-file-input`).value = '';
   }
 
-  // ИИ ЧАТ
+  // --- ЗАГРУЗКА ИСТОРИИ ЧАТА ТЕКУЩЕГО УЧЕНИКА ---
+  async function loadUserAiHistory() {
+    if (!currentUser) return;
+    try {
+      const res = await fetch('/api/chat/history', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ username: currentUser.name })
+      });
+      const history = await res.json();
+      const box = document.getElementById('ai-chat-stream');
+      box.innerHTML = '';
+
+      if (history.length === 0) {
+        // Приветственное сообщение, если чат чистый
+        box.innerHTML = `
+          <div class="message-wrap bot">
+            <div class="avatar-bubble">
+              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><circle cx="15.5" cy="8.5" r="1.5"></circle><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+            </div>
+            <div class="msg-body">
+              <div class="bubble-content">
+                Привет! Я настроен строго по школьной программе 8 «Б». Знаю точное время МСК и все задания из базы. Задай вопрос или скинь фото!
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      history.forEach(item => {
+        const att = item.attachment_data ? {
+          name: item.attachment_name,
+          data: item.attachment_data,
+          isImage: item.is_image
+        } : null;
+
+        appendMsg('ai', item.message, item.role, currentUser.name, currentUser.avatar, att);
+      });
+    } catch(e) {}
+  }
+
+  // --- ПОТОКОВЫЙ ИИ ЧАТ ---
+  let aiAbortController = null;
+
+  function stopAiStream() {
+    if (aiAbortController) {
+      aiAbortController.abort();
+      aiAbortController = null;
+    }
+    setAiLoadingState(false);
+  }
+
+  function setAiLoadingState(isLoading) {
+    const stopWrap = document.getElementById('ai-stop-wrap');
+    const sendBtn = document.getElementById('ai-send-btn');
+    const inputField = document.getElementById('ai-input');
+
+    if (isLoading) {
+      stopWrap.style.display = 'flex';
+      sendBtn.disabled = true;
+      sendBtn.style.opacity = '0.5';
+    } else {
+      stopWrap.style.display = 'none';
+      sendBtn.disabled = false;
+      sendBtn.style.opacity = '1';
+      inputField.focus();
+    }
+  }
+
   async function sendAiMessage() {
     const input = document.getElementById('ai-input');
     const txt = input.value.trim();
@@ -734,19 +868,103 @@
     input.value = '';
     clearAttachment('ai');
 
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ 
-        message: txt, 
-        username: currentUser.name, 
-        attachment_name: att ? att.name : null,
-        attachment_data: att ? att.data : null,
-        is_image: att ? att.isImage : false
-      })
-    });
-    const d = await res.json();
-    appendMsg('ai', d.reply, 'bot', '8-B AI', null, null);
+    const box = document.getElementById('ai-chat-stream');
+    const wrap = document.createElement('div');
+    wrap.className = 'message-wrap bot';
+    wrap.innerHTML = `
+      <div class="avatar-bubble">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><circle cx="15.5" cy="8.5" r="1.5"></circle><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+      </div>
+      <div class="msg-body">
+        <div class="bubble-content mono">
+          <span class="thinking-status">
+            <span>ИИ думает</span>
+            <span class="thinking-dots">
+              <span class="thinking-dot"></span>
+              <span class="thinking-dot"></span>
+              <span class="thinking-dot"></span>
+            </span>
+          </span>
+        </div>
+      </div>
+    `;
+    box.appendChild(wrap);
+    box.scrollTop = box.scrollHeight;
+    const bubbleContent = wrap.querySelector('.bubble-content');
+
+    aiAbortController = new AbortController();
+    setAiLoadingState(true);
+
+    let isFirstChunk = true;
+    let fullResponse = '';
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ 
+          message: txt, 
+          username: currentUser.name, 
+          attachment_name: att ? att.name : null,
+          attachment_data: att ? att.data : null,
+          is_image: att ? att.isImage : false
+        }),
+        signal: aiAbortController.signal
+      });
+
+      if (!res.ok) {
+        bubbleContent.innerText = "❌ Ошибка соединения с сервером";
+        setAiLoadingState(false);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const rawData = line.slice(6).trim();
+            if (rawData === '[DONE]') break;
+
+            try {
+              const parsed = JSON.parse(rawData);
+              if (parsed.content) {
+                if (isFirstChunk) {
+                  bubbleContent.innerHTML = '';
+                  bubbleContent.classList.remove('mono');
+                  isFirstChunk = false;
+                }
+                fullResponse += parsed.content;
+                bubbleContent.innerText = fullResponse;
+                box.scrollTop = box.scrollHeight;
+              } else if (parsed.error) {
+                bubbleContent.innerText = "❌ " + parsed.error;
+              }
+            } catch (e) {}
+          }
+        }
+      }
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        if (isFirstChunk) {
+          bubbleContent.innerText = "⏹️ Ответ остановлен.";
+        }
+      } else {
+        bubbleContent.innerText = "❌ Ошибка отправки запроса.";
+      }
+    } finally {
+      aiAbortController = null;
+      setAiLoadingState(false);
+    }
   }
 
   function quickAi(t) {
@@ -769,7 +987,6 @@
     } catch(e) {}
   }
 
-  // Авто-обновление группового чата каждые 4 секунды
   setInterval(() => {
     const groupView = document.getElementById('view-group');
     if (groupView && groupView.classList.contains('active')) {
@@ -828,7 +1045,7 @@
     box.scrollTop = box.scrollHeight;
   }
 
-  // ЗАГРУЗКА ДАННЫХ ДАШБОРДА
+  // ЗАГРУЗКА ДАННЫХ
   async function initApp() {
     const res = await fetch('/api/dashboard');
     const d = await res.json();
@@ -854,6 +1071,9 @@
         `;
       });
     }
+
+    // Загружаем личную историю диалога с ИИ
+    loadUserAiHistory();
   }
 
   function solveHw(s, t) {
@@ -861,7 +1081,7 @@
     quickAi(`Помоги разобрать задание по предмету ${s}: ${t}`);
   }
 
-  // АДМИНКА (ТОЛЬКО DUDO)
+  // --- АДМИНКА (ТОЛЬКО ДЛЯ DUDO) ---
   async function loadAdminData() {
     if (!currentUser || currentUser.name.toLowerCase() !== 'dudo') return;
     const res = await fetch('/api/admin/data', {
@@ -883,9 +1103,14 @@
     document.getElementById('adm-ai-model').value = d.ai_model_id || '';
     document.getElementById('adm-ai-key').value = d.ai_api_key || '';
 
+    // Заполнение селекта инспектора чатов
+    const inspectSelect = document.getElementById('adm-inspect-user-select');
+    inspectSelect.innerHTML = '<option value="">-- Выберите ученика --</option>';
+
     const uList = document.getElementById('adm-users-list');
     uList.innerHTML = '';
     d.users.forEach(u => {
+      inspectSelect.innerHTML += `<option value="${u.username}">${u.username}</option>`;
       uList.innerHTML += `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.85rem;">
           <div><b>${u.username}</b> <span class="mono" style="font-size:0.75rem; color:var(--text-dim);">${u.is_locked ? '[ПРИВЯЗАН]' : '[СВОБОДЕН]'}</span></div>
@@ -895,6 +1120,41 @@
     });
 
     document.getElementById('adm-docs-status').innerText = "Активные конспекты в памяти: " + (d.documents.map(x => x.filename).join(', ') || 'нет');
+  }
+
+  // Загрузка истории выбранного ученика админом
+  async function loadInspectedUserChat() {
+    const targetUser = document.getElementById('adm-inspect-user-select').value;
+    if (!targetUser) return;
+
+    const res = await fetch('/api/admin/user_chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ token: currentUser.token, target_user: targetUser })
+    });
+    const history = await res.json();
+    const box = document.getElementById('adm-chat-history-box');
+    box.style.display = 'flex';
+    box.innerHTML = '';
+
+    if (history.length === 0) {
+      box.innerHTML = `<div class="mono" style="font-size:0.75rem; color:var(--text-dim);">Ученик ${targetUser} еще ничего не писал ИИ.</div>`;
+      return;
+    }
+
+    history.forEach(item => {
+      const isUser = item.role === 'user';
+      box.innerHTML += `
+        <div style="padding:8px 10px; border-radius:8px; background:${isUser ? 'var(--surface-elevated)' : 'var(--surface)'}; font-size:0.82rem; border:1px solid var(--border);">
+          <div class="mono" style="font-size:0.68rem; color:var(--text-dim); margin-bottom:4px;">
+            <b>${isUser ? targetUser : '8-B AI'}</b> • ${item.time || ''}
+          </div>
+          ${item.attachment_name ? `<div class="mono" style="font-size:0.72rem; color:var(--accent);">📁 Прикреплено: ${item.attachment_name}</div>` : ''}
+          ${item.attachment_data && item.is_image ? `<img src="${item.attachment_data}" style="max-width:140px; border-radius:6px; margin:4px 0; display:block;">` : ''}
+          <div style="white-space:pre-wrap;">${item.message || ''}</div>
+        </div>
+      `;
+    });
   }
 
   async function resetDev(id) {
