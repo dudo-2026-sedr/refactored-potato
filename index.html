@@ -10,7 +10,6 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
-    /* ТЁМНАЯ ТЕМА */
     :root {
       --bg: #09090b;
       --surface: #121216;
@@ -31,7 +30,6 @@
       --radius-lg: 20px;
     }
 
-    /* СВЕТЛАЯ ТЕМА */
     body.theme-light {
       --bg: #f8fafc;
       --surface: #ffffff;
@@ -49,14 +47,7 @@
       --bubble-user-text: #ffffff;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
     .mono { font-family: 'JetBrains Mono', monospace; }
 
     ::-webkit-scrollbar { width: 4px; height: 4px; }
@@ -64,297 +55,197 @@
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
     body {
-      background: var(--bg);
-      color: var(--text);
-      display: flex;
-      justify-content: center;
-      min-height: 100vh;
-      overflow-x: hidden;
-      transition: background-color 0.2s, color 0.2s;
+      background: var(--bg); color: var(--text); display: flex; justify-content: center;
+      min-height: 100vh; overflow-x: hidden; transition: background-color 0.2s, color 0.2s;
     }
 
     .app-frame {
-      width: 100%;
-      max-width: 660px;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      background: var(--bg);
-      border-inline: 1px solid var(--border);
-      position: relative;
+      width: 100%; max-width: 660px; min-height: 100vh; display: flex; flex-direction: column;
+      background: var(--bg); border-inline: 1px solid var(--border); position: relative;
     }
 
     /* ШАПКА */
     header {
-      padding: 12px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: var(--bg);
-      border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      z-index: 40;
+      padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;
+      background: var(--bg); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 40;
     }
-
     .brand-wrap { display: flex; align-items: center; gap: 10px; }
-
-    .sticker-crest {
-      width: 36px;
-      height: 36px;
-      background: var(--accent);
-      border-radius: var(--radius-sm);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .sticker-crest svg { width: 18px; height: 18px; fill: var(--accent-inv); }
-    .brand-title { font-size: 0.95rem; font-weight: 800; letter-spacing: -0.02em; }
-    .brand-meta { font-size: 0.72rem; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
-
-    .live-dot {
-      width: 6px; height: 6px; background: var(--text); border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-
-    /* КНОПКА «НАЗАД» */
-    .btn-back {
-      display: none;
-      align-items: center;
-      gap: 6px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 6px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 0.78rem;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .btn-back svg { width: 14px; height: 14px; stroke: currentColor; }
-    .btn-back:hover { background: var(--surface-hover); }
-
-    .header-actions { display: flex; align-items: center; gap: 8px; }
 
     .btn-icon {
       background: var(--surface); border: 1px solid var(--border); color: var(--text);
-      width: 36px; height: 36px; border-radius: var(--radius-sm);
-      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      width: 36px; height: 36px; border-radius: var(--radius-sm); display: flex;
+      align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;
     }
     .btn-icon svg { width: 16px; height: 16px; stroke: currentColor; }
 
-    .header-avatar {
-      width: 36px; height: 36px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border); object-fit: cover; cursor: pointer;
-      background: var(--surface);
-    }
+    .brand-title { font-size: 0.92rem; font-weight: 800; letter-spacing: -0.02em; }
+    .brand-meta { font-size: 0.7rem; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
 
-    /* ВКЛАДКИ */
-    .nav-tabs {
-      display: flex; padding: 6px 14px; background: var(--surface);
-      border-bottom: 1px solid var(--border); gap: 4px; overflow-x: auto;
-    }
+    .live-dot { width: 6px; height: 6px; background: var(--text); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .header-avatar { width: 34px; height: 34px; border-radius: var(--radius-sm); border: 1px solid var(--border); object-fit: cover; cursor: pointer; }
+
+    /* ВКЛАДКИ НАВИГАЦИИ */
+    .nav-tabs { display: flex; padding: 6px 12px; background: var(--surface); border-bottom: 1px solid var(--border); gap: 4px; overflow-x: auto; }
     .tab-btn {
-      flex: 1; padding: 8px 6px; background: transparent; border: none;
-      border-radius: var(--radius-sm); color: var(--text-dim);
-      font-size: 0.75rem; font-weight: 700; display: flex; align-items: center;
-      justify-content: center; gap: 6px; cursor: pointer; white-space: nowrap;
+      flex: 1; padding: 8px 4px; background: transparent; border: none; border-radius: var(--radius-sm);
+      color: var(--text-dim); font-size: 0.74rem; font-weight: 700; display: flex; align-items: center;
+      justify-content: center; gap: 5px; cursor: pointer; white-space: nowrap;
     }
     .tab-btn svg { width: 14px; height: 14px; stroke: currentColor; }
     .tab-btn:hover { color: var(--text); background: var(--surface-hover); }
     .tab-btn.active { background: var(--accent); color: var(--accent-inv); }
     .tab-btn.active svg { stroke: var(--accent-inv); }
 
-    /* ВКЛАДКА АДМИНА — ПО УМОЛЧАНИЮ ВСЕГДА ВЫРЕЗАНА ИЗ ВИДА */
-    #admin-tab-btn {
-      display: none !important;
-    }
+    /* АДМИНКА ПО УМОЛЧАНИЮ ВСЕГДА СКРЫТА */
+    #admin-tab-btn { display: none !important; }
 
+    /* ЭКРАНЫ */
     .view-screen { display: none; flex-direction: column; flex: 1; }
     .view-screen.active { display: flex; }
 
+    /* ПАНЕЛЬ ЧАТА: СТАТУС И ОЧИСТКА */
+    .chat-top-info {
+      padding: 8px 16px; display: flex; justify-content: space-between; align-items: center;
+      background: var(--surface); border-bottom: 1px solid var(--border); font-size: 0.75rem;
+    }
+    .btn-clear-chat {
+      background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 0.72rem;
+    }
+    .btn-clear-chat:hover { color: #ef4444; }
+
     .announcement-bar {
-      margin: 12px 16px 0; padding: 10px 14px; background: var(--surface);
-      border: 1px solid var(--border); border-radius: var(--radius-md);
-      display: flex; align-items: center; gap: 10px; font-size: 0.82rem;
+      margin: 10px 14px 0; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-md); display: flex; align-items: center; gap: 8px; font-size: 0.8rem;
     }
-    .sticker-badge {
-      font-size: 0.65rem; font-weight: 800; padding: 3px 8px;
-      background: var(--accent); color: var(--accent-inv); border-radius: 4px;
-    }
+    .sticker-badge { font-size: 0.65rem; font-weight: 800; padding: 2px 6px; background: var(--accent); color: var(--accent-inv); border-radius: 4px; }
 
-    .quick-actions { display: flex; gap: 8px; padding: 10px 16px 4px; overflow-x: auto; }
+    .quick-actions { display: flex; gap: 6px; padding: 8px 14px; overflow-x: auto; }
     .action-chip {
-      background: var(--surface); border: 1px solid var(--border); color: var(--text);
-      padding: 6px 12px; border-radius: 30px; font-size: 0.74rem; font-weight: 600;
-      display: flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap;
-    }
-    .action-chip svg { width: 12px; height: 12px; stroke: var(--text-dim); }
-
-    /* ЧАТ */
-    .chat-container {
-      flex: 1; overflow-y: auto; padding: 14px 16px; display: flex;
-      flex-direction: column; gap: 14px;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 5px 10px;
+      border-radius: 20px; font-size: 0.72rem; font-weight: 600; cursor: pointer; white-space: nowrap;
     }
 
+    /* СООБЩЕНИЯ */
+    .chat-container { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
     .message-wrap { display: flex; gap: 10px; max-width: 88%; animation: fadeIn 0.2s ease forwards; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
     .message-wrap.user { align-self: flex-end; flex-direction: row-reverse; }
     .message-wrap.bot, .message-wrap.other { align-self: flex-start; }
 
     .avatar-bubble {
-      width: 32px; height: 32px; border-radius: 10px; border: 1px solid var(--border);
-      background: var(--surface-elevated); object-fit: cover; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
-      font-weight: 700; color: var(--text);
+      width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface-elevated); object-fit: cover; flex-shrink: 0; display: flex;
+      align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: var(--text);
     }
-    .avatar-bubble svg { width: 16px; height: 16px; fill: var(--text-dim); }
+    .avatar-bubble svg { width: 15px; height: 15px; fill: var(--text-dim); }
 
     .msg-body { display: flex; flex-direction: column; gap: 4px; max-width: 100%; }
-    .msg-meta { font-size: 0.7rem; color: var(--text-dim); display: flex; gap: 6px; }
+    .msg-meta { font-size: 0.68rem; color: var(--text-dim); display: flex; gap: 6px; }
 
     .bubble-content {
-      padding: 10px 14px; font-size: 0.88rem; line-height: 1.5;
-      word-break: break-word; border-radius: 14px; white-space: pre-wrap;
+      padding: 10px 12px; font-size: 0.88rem; line-height: 1.5; word-break: break-word;
+      border-radius: 14px; white-space: pre-wrap;
     }
-    .message-wrap.user .bubble-content {
-      background: var(--bubble-user); color: var(--bubble-user-text);
-      border-bottom-right-radius: 4px; font-weight: 500;
-    }
-    .message-wrap.bot .bubble-content, .message-wrap.other .bubble-content {
-      background: var(--bubble-bot); border: 1px solid var(--border);
-      color: var(--text); border-bottom-left-radius: 4px;
-    }
+    .message-wrap.user .bubble-content { background: var(--bubble-user); color: var(--bubble-user-text); border-bottom-right-radius: 4px; }
+    .message-wrap.bot .bubble-content, .message-wrap.other .bubble-content { background: var(--bubble-bot); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
+
+    .msg-img-preview { max-width: 200px; border-radius: 8px; margin-bottom: 6px; border: 1px solid var(--border); display: block; }
+    .msg-file-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; background: var(--surface-hover); border: 1px solid var(--border); border-radius: 6px; font-size: 0.72rem; margin-bottom: 4px; }
 
     /* АНИМАЦИЯ «ИИ ДУМАЕТ» */
-    .thinking-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--text-dim);
-      font-size: 0.8rem;
-    }
+    .thinking-status { display: inline-flex; align-items: center; gap: 8px; color: var(--text-dim); font-size: 0.8rem; }
     .thinking-dots { display: inline-flex; gap: 4px; }
-    .thinking-dot {
-      width: 5px; height: 5px; border-radius: 50%; background: var(--text-dim);
-      animation: bounce 1.2s infinite ease-in-out;
-    }
+    .thinking-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--text-dim); animation: bounce 1.2s infinite ease-in-out; }
     .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
     .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
-
-    @keyframes bounce {
-      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-      40% { transform: scale(1.1); opacity: 1; }
-    }
-
-    .msg-img-preview { max-width: 220px; border-radius: 8px; margin-bottom: 6px; border: 1px solid var(--border); display: block; }
-    .msg-file-pill {
-      display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px;
-      background: var(--surface-hover); border: 1px solid var(--border); border-radius: 6px;
-      font-size: 0.75rem; margin-bottom: 4px;
-    }
+    @keyframes bounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1.1); opacity: 1; } }
 
     /* ПАНЕЛЬ ВВОДА */
-    .dock {
-      padding: 10px 16px 14px; background: var(--bg); border-top: 1px solid var(--border);
-      position: sticky; bottom: 0; z-index: 30; display: flex; flex-direction: column; gap: 8px;
-    }
-
-    .floating-stop-wrap {
-      display: none;
-      justify-content: center;
-      width: 100%;
-    }
-
+    .dock { padding: 8px 14px 12px; background: var(--bg); border-top: 1px solid var(--border); position: sticky; bottom: 0; z-index: 30; display: flex; flex-direction: column; gap: 6px; }
+    .floating-stop-wrap { display: none; justify-content: center; width: 100%; }
     .btn-stop-stream {
-      background: var(--surface-elevated);
-      border: 1px solid var(--border-focus);
-      color: var(--text);
-      padding: 6px 14px;
-      border-radius: 20px;
-      font-size: 0.78rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      background: var(--surface-elevated); border: 1px solid var(--border-focus); color: var(--text);
+      padding: 5px 12px; border-radius: 16px; font-size: 0.75rem; font-weight: 700; display: flex;
+      align-items: center; gap: 6px; cursor: pointer;
     }
-    .btn-stop-stream:hover {
-      background: var(--surface-hover);
-      border-color: var(--accent);
-    }
-    .btn-stop-stream svg { width: 12px; height: 12px; fill: currentColor; }
+    .btn-stop-stream svg { width: 10px; height: 10px; fill: currentColor; }
 
     .file-preview-shelf {
-      display: none; align-items: center; gap: 8px; padding: 6px 10px;
-      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
-      font-size: 0.75rem;
+      display: none; align-items: center; gap: 8px; padding: 5px 8px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.72rem;
     }
-    .file-preview-shelf img { width: 28px; height: 28px; border-radius: 4px; object-fit: cover; }
+    .file-preview-shelf img { width: 24px; height: 24px; border-radius: 4px; object-fit: cover; }
     .btn-remove-attachment { background: transparent; border: none; color: var(--text-dim); cursor: pointer; margin-left: auto; }
 
     .input-shell {
       background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-      display: flex; align-items: center; padding: 4px 6px 4px 12px; gap: 8px;
+      display: flex; align-items: center; padding: 4px 6px 4px 10px; gap: 8px;
     }
-    .btn-attach {
-      background: transparent; border: none; color: var(--text-dim);
-      display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 6px;
-    }
+    .btn-attach { background: transparent; border: none; color: var(--text-dim); display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 4px; }
     .btn-attach svg { width: 18px; height: 18px; stroke: currentColor; }
-    .text-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-size: 0.9rem; }
-
+    .text-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-size: 0.88rem; }
     .btn-send {
-      background: var(--accent); color: var(--accent-inv); border: none; width: 36px; height: 36px;
+      background: var(--accent); color: var(--accent-inv); border: none; width: 34px; height: 34px;
       border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;
     }
-    .btn-send svg { width: 15px; height: 15px; stroke: var(--accent-inv); }
+    .btn-send svg { width: 14px; height: 14px; stroke: var(--accent-inv); }
+
+    /* БОКОВАЯ ПАНЕЛЬ ИСТОРИИ ЧАТОВ (КАК В GEMINI / CHATGPT) */
+    .chat-drawer-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(8px);
+      z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+    }
+    .chat-drawer-overlay.active { opacity: 1; pointer-events: auto; }
+
+    .chat-drawer {
+      position: fixed; top: 0; left: 0; bottom: 0; width: 80%; max-width: 320px;
+      background: var(--surface); border-right: 1px solid var(--border); z-index: 101;
+      transform: translateX(-100%); transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex; flex-direction: column; padding: 14px;
+    }
+    .chat-drawer.active { transform: translateX(0); }
+
+    .drawer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .btn-new-chat {
+      background: var(--accent); color: var(--accent-inv); border: none; padding: 10px 14px;
+      border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 700; display: flex;
+      align-items: center; justify-content: center; gap: 8px; cursor: pointer; width: 100%; margin-bottom: 12px;
+    }
+    .btn-new-chat svg { width: 14px; height: 14px; stroke: currentColor; }
+
+    .drawer-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+    .drawer-item {
+      padding: 9px 10px; border-radius: var(--radius-sm); background: var(--bg); border: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-size: 0.82rem;
+    }
+    .drawer-item.active { border-color: var(--accent); background: var(--surface-hover); }
+    .drawer-item-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 6px; }
+    .drawer-item-actions { display: flex; gap: 4px; }
+    .drawer-act-btn { background: transparent; border: none; color: var(--text-dim); cursor: pointer; padding: 2px; }
+    .drawer-act-btn:hover { color: var(--text); }
+    .drawer-act-btn svg { width: 13px; height: 13px; stroke: currentColor; }
 
     /* ПРОФИЛЬ */
-    .profile-view-wrap { padding: 24px 20px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
-    .profile-avatar-container { position: relative; width: 100px; height: 100px; }
-    .profile-avatar-large {
-      width: 100%; height: 100%; border-radius: 28px; object-fit: cover;
-      border: 2px solid var(--border); background: var(--surface);
-    }
+    .profile-view-wrap { padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .profile-avatar-container { position: relative; width: 90px; height: 90px; }
+    .profile-avatar-large { width: 100%; height: 100%; border-radius: 24px; object-fit: cover; border: 2px solid var(--border); background: var(--surface); }
     .profile-upload-badge {
-      position: absolute; bottom: -4px; right: -4px; background: var(--accent);
-      color: var(--accent-inv); width: 32px; height: 32px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      position: absolute; bottom: -4px; right: -4px; background: var(--accent); color: var(--accent-inv);
+      width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;
     }
-    .profile-upload-badge svg { width: 16px; height: 16px; stroke: var(--accent-inv); }
+    .profile-upload-badge svg { width: 14px; height: 14px; stroke: var(--accent-inv); }
 
-    .profile-form {
-      width: 100%; background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-md); padding: 18px; display: flex; flex-direction: column; gap: 14px;
-    }
-    .form-input {
-      background: var(--bg); border: 1px solid var(--border); color: var(--text);
-      padding: 10px 12px; border-radius: var(--radius-sm); font-size: 0.88rem; outline: none; width: 100%;
-    }
-    .btn-solid {
-      background: var(--accent); color: var(--accent-inv); border: none; padding: 12px;
-      border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 700; cursor: pointer;
-    }
+    .profile-form { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .form-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 9px 12px; border-radius: var(--radius-sm); font-size: 0.85rem; outline: none; width: 100%; }
+    .btn-solid { background: var(--accent); color: var(--accent-inv); border: none; padding: 10px; border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 700; cursor: pointer; }
 
-    /* АВТОРИЗАЦИЯ */
-    .auth-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(16px);
-      display: flex; justify-content: center; align-items: center; padding: 20px; z-index: 100;
-    }
-    .auth-box {
-      width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 26px 22px; display: flex; flex-direction: column; gap: 14px;
-    }
-    .alert-error {
-      background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fca5a5;
-      padding: 10px; border-radius: var(--radius-sm); font-size: 0.8rem; display: none;
-    }
+    /* МОДАЛКА ВХОДА */
+    .auth-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(16px); display: flex; justify-content: center; align-items: center; padding: 20px; z-index: 200; }
+    .auth-box { width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+    .alert-error { background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fca5a5; padding: 8px; border-radius: var(--radius-sm); font-size: 0.78rem; display: none; }
   </style>
 </head>
 <body>
@@ -363,16 +254,12 @@
   <!-- ШАПКА -->
   <header>
     <div class="brand-wrap">
-      <button class="btn-back mono" id="header-back-btn" onclick="goBack()">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        НАЗАД
+      <!-- КНОПКА ТРИ ЛИНИИ (БОКОВОЕ МЕНЮ ИСТОРИИ ЧАТОВ) -->
+      <button class="btn-icon" onclick="openDrawer()" title="История чатов">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
       </button>
 
-      <div class="sticker-crest" id="header-crest">
-        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
-      </div>
-      
-      <div class="brand-info">
+      <div>
         <div class="brand-title mono" id="header-title">8-B CORE</div>
         <div class="brand-meta mono" id="header-subtitle">
           <div class="live-dot"></div>
@@ -382,6 +269,7 @@
     </div>
 
     <div class="header-actions">
+      <!-- СМЕНА ТЕМЫ -->
       <button class="btn-icon" onclick="toggleTheme()" title="Сменить тему">
         <svg id="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke-width="2" style="display:none;">
           <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
@@ -413,7 +301,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
       ПРОФИЛЬ
     </button>
-    <!-- АДМИН (СКРЫТ ДЛЯ ВСЕХ ПО УМОЛЧАНИЮ) -->
+    <!-- АДМИН (СКРЫТО ДЛЯ ВСЕХ КРОМЕ DUDO) -->
     <button class="tab-btn" id="admin-tab-btn" onclick="switchTab('admin')">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       АДМИН
@@ -422,6 +310,12 @@
 
   <!-- 1. ИИ ЧАТ -->
   <div class="view-screen active" id="view-ai">
+    <!-- ИНФО О ДИАЛОГЕ И КНОПКА ОЧИСТКИ -->
+    <div class="chat-top-info mono">
+      <span id="active-chat-title-display">Диалог: Новый чат</span>
+      <button class="btn-clear-chat mono" onclick="clearCurrentChatMessages()">✕ Очистить сообщения</button>
+    </div>
+
     <div class="announcement-bar">
       <span class="sticker-badge mono">ИНФО</span>
       <span id="ann-text" style="color:var(--text-dim)">Загрузка...</span>
@@ -451,10 +345,10 @@
       
       <div class="input-shell">
         <input type="file" id="ai-file-input" style="display:none;" onchange="handleFileSelected(event, 'ai')">
-        <button class="btn-attach" onclick="document.getElementById('ai-file-input').click()" title="Прикрепить файл или фото">
+        <button class="btn-attach" onclick="document.getElementById('ai-file-input').click()" title="Прикрепить фото или документ">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
         </button>
-        <input type="text" class="text-input" id="ai-input" placeholder="Задай вопрос или спроси про ДЗ..." onkeydown="if(event.key==='Enter') sendAiMessage()">
+        <input type="text" class="text-input" id="ai-input" placeholder="Задай вопрос, прикрепи фото или файл..." onkeydown="if(event.key==='Enter') sendAiMessage()">
         <button class="btn-send" id="ai-send-btn" onclick="sendAiMessage()">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </button>
@@ -511,82 +405,82 @@
 
   <!-- 5. АДМИНКА (СТРОГО ТОЛЬКО DUDO) -->
   <div class="view-screen" id="view-admin">
-    <div style="padding:16px; display:flex; flex-direction:column; gap:16px;">
+    <div style="padding:14px; display:flex; flex-direction:column; gap:14px;">
       
-      <!-- ИНСПЕКТОР ЧАТОВ УЧЕНИКОВ (ШПИОНСКАЯ ПАНЕЛЬ) -->
-      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
-        <div class="mono" style="font-weight:700; font-size:0.85rem;">🕵️ ПРОСМОТР ДИАЛОГОВ УЧЕНИКОВ С ИИ</div>
-        <div style="display:flex; gap:8px;">
-          <select id="adm-inspect-user-select" class="form-input mono" style="flex:1;">
-            <option value="">-- Выберите ученика --</option>
-          </select>
-          <button class="btn-solid mono" style="padding:8px 14px;" onclick="loadInspectedUserChat()">СМОТРЕТЬ</button>
-        </div>
-        <!-- Окно отображения переписки -->
-        <div id="adm-chat-history-box" style="display:none; max-height:300px; overflow-y:auto; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:8px;"></div>
+      <!-- ИНСПЕКТОР ДИАЛОГОВ -->
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:10px;">
+        <div class="mono" style="font-weight:700; font-size:0.85rem;">🕵️ ПРОСМОТР ДИАЛОГОВ УЧЕНИКОВ</div>
+        <select id="adm-user-select" class="form-input mono" onchange="loadAdminUserSessions()">
+          <option value="">-- Выберите ученика --</option>
+        </select>
+        <select id="adm-session-select" class="form-input mono" style="display:none;" onchange="loadAdminSessionMessages()">
+          <option value="">-- Выберите диалог --</option>
+        </select>
+        <div id="adm-chat-history-box" style="display:none; max-height:280px; overflow-y:auto; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:8px;"></div>
       </div>
 
       <!-- ПОДКЛЮЧЕНИЕ ИИ -->
-      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
-        <div class="mono" style="font-weight:700; font-size:0.85rem;">🤖 ПОДКЛЮЧЕНИЕ НЕЙРОСЕТИ (OPENAI ФОРМАТ)</div>
-        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">BASE URL (ЭНДПОИНТ):</label>
-        <input type="text" id="adm-ai-url" class="form-input" placeholder="https://api.openai.com/v1">
-        
-        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">MODEL ID (ИМЯ МОДЕЛИ):</label>
-        <input type="text" id="adm-ai-model" class="form-input" placeholder="gpt-4o-mini, deepseek-chat...">
-
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
+        <div class="mono" style="font-weight:700; font-size:0.85rem;">🤖 ПОДКЛЮЧЕНИЕ ИИ (OPENAI ФОРМАТ)</div>
+        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">BASE URL:</label>
+        <input type="text" id="adm-ai-url" class="form-input">
+        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">MODEL ID:</label>
+        <input type="text" id="adm-ai-model" class="form-input">
         <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">API KEY:</label>
-        <input type="password" id="adm-ai-key" class="form-input" placeholder="sk-...">
+        <input type="password" id="adm-ai-key" class="form-input">
       </div>
 
       <!-- ДОБАВЛЕНИЕ ДЗ -->
-      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
         <div class="mono" style="font-weight:700; font-size:0.85rem;">📚 ДОБАВИТЬ ЗАДАНИЕ В БАЗУ ДЗ</div>
-        <input type="text" id="adm-subj" class="form-input" placeholder="Предмет (например: Алгебра)">
-        <input type="text" id="adm-task" class="form-input" placeholder="Задание (например: № 215, 218)">
-        <input type="text" id="adm-date" class="form-input mono" placeholder="Срок сдачи (например: Четверг)">
+        <input type="text" id="adm-subj" class="form-input" placeholder="Предмет">
+        <input type="text" id="adm-task" class="form-input" placeholder="Задание">
+        <input type="text" id="adm-date" class="form-input mono" placeholder="Срок сдачи">
         <button class="btn-solid mono" onclick="addHwAdmin()">ОПУБЛИКОВАТЬ ДЗ</button>
       </div>
 
       <!-- СБРОС УСТРОЙСТВ -->
-      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
         <div class="mono" style="font-weight:700; font-size:0.85rem;">👥 СБРОС УСТРОЙСТВ ОДНОКЛАССНИКОВ</div>
         <div id="adm-users-list"></div>
       </div>
 
       <!-- ПРАВИЛА И БАННЕР -->
-      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
-        <div class="mono" style="font-weight:700; font-size:0.85rem;">🧠 ПРАВИЛА ИИ И БАННЕР КЛАССА</div>
-        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">СИСТЕМНЫЙ ПРОМПТ:</label>
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
+        <div class="mono" style="font-weight:700; font-size:0.85rem;">🧠 ПРАВИЛА ИИ И БАННЕР</div>
+        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">ПРОМПТ:</label>
         <textarea id="adm-prompt" class="form-input" rows="2"></textarea>
-        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">ФАКТЫ И ИНСАЙДЫ УЧИТЕЛЕЙ:</label>
+        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">ФАКТЫ:</label>
         <textarea id="adm-facts" class="form-input" rows="2"></textarea>
-        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">СРОЧНЫЙ БАННЕР:</label>
+        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">БАННЕР:</label>
         <input type="text" id="adm-banner" class="form-input">
         <button class="btn-solid mono" onclick="saveSettingsAdmin()">СОХРАНИТЬ ВСЕ НАСТРОЙКИ</button>
       </div>
-
-      <!-- ЗАГРУЗКА УЧЕБНИКОВ -->
-      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
-        <div class="mono" style="font-weight:700; font-size:0.85rem;">📁 БАЗА ЗНАНИЙ (УЧЕБНИКИ PDF / TXT)</div>
-        <input type="file" id="adm-doc-file" class="form-input" style="padding:6px;">
-        <button class="btn-solid mono" onclick="adminUploadFile()">ЗАГРУЗИТЬ В ПАМЯТЬ ИИ</button>
-        <div id="adm-docs-status" class="mono" style="font-size:0.72rem; color:var(--text-dim);"></div>
-      </div>
-
     </div>
   </div>
+</div>
+
+<!-- БОКОВАЯ ШТОРКА ИСТОРИИ ЧАТОВ (GEMINI/CHATGPT DRAWER) -->
+<div class="chat-drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="chat-drawer" id="chat-drawer">
+  <div class="drawer-header">
+    <div class="mono" style="font-weight:800; font-size:0.9rem;">ИСТОРИЯ ЧАТОВ</div>
+    <button class="btn-icon" style="width:28px; height:28px;" onclick="closeDrawer()">✕</button>
+  </div>
+  
+  <button class="btn-new-chat mono" onclick="createNewChatSession()">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    + Новый чат
+  </button>
+
+  <div class="drawer-list" id="drawer-chat-list"></div>
 </div>
 
 <!-- ОКНО ВХОДА (DEVICE LOCK) -->
 <div class="auth-overlay" id="auth-modal">
   <div class="auth-box">
     <div style="display:flex; align-items:center; gap:10px;">
-      <div class="sticker-crest"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg></div>
-      <div>
-        <div style="font-weight:800; font-size:1.1rem;">8-B CORE</div>
-        <div style="font-size:0.75rem; color:var(--text-dim);">Закрытая платформа 8 «Б»</div>
-      </div>
+      <div style="font-weight:800; font-size:1.1rem;">8-B CORE</div>
     </div>
     <div class="alert-error" id="auth-err"></div>
     <input type="text" id="auth-login" class="form-input" placeholder="Логин (например: dudo)">
@@ -616,14 +510,14 @@
     document.getElementById('theme-icon-moon').style.display = t === 'light' ? 'none' : 'block';
   }
 
-  // СЕССИЯ
+  // СЕССИЯ ПОЛЬЗОВАТЕЛЯ
   const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23888'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E";
   let currentUser = JSON.parse(localStorage.getItem('school_user') || 'null');
-  let lastTab = 'ai';
+  let currentSessionId = localStorage.getItem('school_active_chat_session') || null;
 
   if (currentUser) {
     document.getElementById('auth-modal').style.display = 'none';
-    // ВКЛАДКА АДМИНА ВИДНА СТРОГО И ТОЛЬКО DUDO
+    // ВКЛАДКА АДМИНА ВИДНА ТОЛЬКО DUDO
     if (currentUser.role === 'admin' && currentUser.name.toLowerCase() === 'dudo') {
       document.getElementById('admin-tab-btn').style.setProperty('display', 'flex', 'important');
     }
@@ -665,6 +559,7 @@
 
   function logout() {
     localStorage.removeItem('school_user');
+    localStorage.removeItem('school_active_chat_session');
     location.reload();
   }
 
@@ -678,9 +573,8 @@
   function uploadAvatar(e) {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async function(evt) {
-      currentUser.avatar = evt.target.result;
+    compressImage(file, 200, 200, 0.8, async (compressedBase64) => {
+      currentUser.avatar = compressedBase64;
       updateProfileUI();
       localStorage.setItem('school_user', JSON.stringify(currentUser));
       await fetch('/api/profile/update', {
@@ -688,8 +582,7 @@
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ username: currentUser.name, new_name: currentUser.name, avatar: currentUser.avatar })
       });
-    };
-    reader.readAsDataURL(file);
+    });
   }
 
   async function saveProfile() {
@@ -711,54 +604,151 @@
     }
   }
 
-  // НАВИГАЦИЯ
   function switchTab(t) {
-    // ЖЕСТКИЙ ЗАПРЕТ ВХОДА В АДМИНКУ ДЛЯ НЕ-DUDO
     if (t === 'admin' && (!currentUser || currentUser.role !== 'admin' || currentUser.name.toLowerCase() !== 'dudo')) {
       return;
     }
-
-    const currentActive = document.querySelector('.view-screen.active');
-    if (currentActive) {
-      const currentId = currentActive.id.replace('view-', '');
-      if (currentId !== 'profile' && currentId !== 'admin') {
-        lastTab = currentId;
-      }
-    }
-
     const tabs = ['ai', 'group', 'homework', 'profile', 'admin'];
     document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', tabs[i] === t));
     document.querySelectorAll('.view-screen').forEach(s => s.classList.remove('active'));
     document.getElementById(`view-${t}`).classList.add('active');
 
-    const backBtn = document.getElementById('header-back-btn');
-    const crest = document.getElementById('header-crest');
-    const headerTitle = document.getElementById('header-title');
-    const headerSub = document.getElementById('header-subtitle');
-
-    if (t === 'profile') {
-      backBtn.style.display = 'flex';
-      crest.style.display = 'none';
-      headerTitle.innerText = "ПРОФИЛЬ";
-      headerSub.style.display = 'none';
-    } else if (t === 'admin') {
-      backBtn.style.display = 'flex';
-      crest.style.display = 'none';
-      headerTitle.innerText = "АДМИНКА";
-      headerSub.style.display = 'none';
-      loadAdminData();
-    } else {
-      backBtn.style.display = 'none';
-      crest.style.display = 'flex';
-      headerTitle.innerText = "8-B CORE";
-      headerSub.style.display = 'flex';
-    }
-
     if (t === 'group') loadGroupMessages();
+    if (t === 'admin') loadAdminData();
   }
 
-  function goBack() {
-    switchTab(lastTab || 'ai');
+  // --- БОКОВАЯ ПАНЕЛЬ ИСТОРИИ ЧАТОВ ---
+  function openDrawer() {
+    document.getElementById('drawer-overlay').classList.add('active');
+    document.getElementById('chat-drawer').classList.add('active');
+    loadChatsList();
+  }
+
+  function closeDrawer() {
+    document.getElementById('drawer-overlay').classList.remove('active');
+    document.getElementById('chat-drawer').classList.remove('active');
+  }
+
+  async function loadChatsList() {
+    if (!currentUser) return;
+    const res = await fetch('/api/chats/list', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ username: currentUser.name })
+    });
+    const chats = await res.json();
+    const list = document.getElementById('drawer-chat-list');
+    list.innerHTML = '';
+
+    if (chats.length === 0) {
+      list.innerHTML = '<div class="mono" style="font-size:0.75rem; color:var(--text-dim); padding:10px;">Нет диалогов</div>';
+      return;
+    }
+
+    chats.forEach(c => {
+      const isActive = c.session_id === currentSessionId;
+      list.innerHTML += `
+        <div class="drawer-item ${isActive ? 'active' : ''}" onclick="selectChatSession('${c.session_id}', '${escapeHtml(c.title)}')">
+          <span class="drawer-item-title mono">${escapeHtml(c.title)}</span>
+          <div class="drawer-item-actions" onclick="event.stopPropagation()">
+            <button class="drawer-act-btn" onclick="renameChatSession('${c.session_id}')" title="Переименовать">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            </button>
+            <button class="drawer-act-btn" onclick="deleteChatSession('${c.session_id}')" title="Удалить">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  async function createNewChatSession() {
+    const res = await fetch('/api/chats/new', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ username: currentUser.name })
+    });
+    const d = await res.json();
+    currentSessionId = d.session_id;
+    localStorage.setItem('school_active_chat_session', currentSessionId);
+    document.getElementById('active-chat-title-display').innerText = "Диалог: Новый чат";
+    closeDrawer();
+    loadActiveChatMessages();
+  }
+
+  function selectChatSession(sessionId, title) {
+    currentSessionId = sessionId;
+    localStorage.setItem('school_active_chat_session', currentSessionId);
+    document.getElementById('active-chat-title-display').innerText = `Диалог: ${title}`;
+    closeDrawer();
+    loadActiveChatMessages();
+  }
+
+  async function renameChatSession(sessionId) {
+    const newTitle = prompt("Введите новое название диалога:");
+    if (!newTitle) return;
+    await fetch('/api/chats/rename', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ session_id: sessionId, title: newTitle, username: currentUser.name })
+    });
+    if (currentSessionId === sessionId) {
+      document.getElementById('active-chat-title-display').innerText = `Диалог: ${newTitle}`;
+    }
+    loadChatsList();
+  }
+
+  async function deleteChatSession(sessionId) {
+    if (!confirm("Удалить этот диалог безвозвратно?")) return;
+    await fetch('/api/chats/delete', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ session_id: sessionId, username: currentUser.name })
+    });
+    if (currentSessionId === sessionId) {
+      currentSessionId = null;
+      localStorage.removeItem('school_active_chat_session');
+      createNewChatSession();
+    } else {
+      loadChatsList();
+    }
+  }
+
+  async function clearCurrentChatMessages() {
+    if (!currentSessionId) return;
+    if (!confirm("Очистить все сообщения в этом диалоге?")) return;
+    await fetch('/api/chats/clear', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ session_id: currentSessionId })
+    });
+    loadActiveChatMessages();
+  }
+
+  // --- СЖАТИЕ ФОТОГРАФИЙ (ИСПРАВЛЯЕТ БАГ «ОШИБКА СОЕДИНЕНИЯ») ---
+  function compressImage(file, maxWidth, maxHeight, quality, callback) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
+        } else {
+          if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        callback(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
   }
 
   // ПРИКРЕПЛЕНИЕ ФАЙЛОВ
@@ -766,20 +756,43 @@
   function handleFileSelected(e, scope) {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-      attachments[scope] = {
-        name: file.name,
-        data: evt.target.result,
-        isImage: file.type.startsWith('image/')
+    const isImg = file.type.startsWith('image/');
+
+    if (isImg) {
+      // Сжимаем фото до 1280px, чтобы не крашило сервер
+      compressImage(file, 1280, 1280, 0.75, (compressedBase64) => {
+        attachments[scope] = {
+          name: file.name,
+          data: compressedBase64,
+          isImage: true
+        };
+        showFilePreview(scope, file.name, compressedBase64, true);
+      });
+    } else {
+      // Документ (PDF / TXT)
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        attachments[scope] = {
+          name: file.name,
+          data: evt.target.result,
+          isImage: false
+        };
+        showFilePreview(scope, file.name, null, false);
       };
-      document.getElementById(`${scope}-file-name`).innerText = file.name;
-      const thumb = document.getElementById(`${scope}-file-thumb`);
-      thumb.src = evt.target.result;
-      thumb.style.display = attachments[scope].isImage ? 'block' : 'none';
-      document.getElementById(`${scope}-file-preview`).style.display = 'flex';
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function showFilePreview(scope, name, data, isImg) {
+    document.getElementById(`${scope}-file-name`).innerText = name;
+    const thumb = document.getElementById(`${scope}-file-thumb`);
+    if (isImg && data) {
+      thumb.src = data;
+      thumb.style.display = 'block';
+    } else {
+      thumb.style.display = 'none';
+    }
+    document.getElementById(`${scope}-file-preview`).style.display = 'flex';
   }
 
   function clearAttachment(scope) {
@@ -788,49 +801,49 @@
     document.getElementById(`${scope}-file-input`).value = '';
   }
 
-  // --- ЗАГРУЗКА ИСТОРИИ ЧАТА ТЕКУЩЕГО УЧЕНИКА ---
-  async function loadUserAiHistory() {
-    if (!currentUser) return;
-    try {
-      const res = await fetch('/api/chat/history', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ username: currentUser.name })
-      });
-      const history = await res.json();
-      const box = document.getElementById('ai-chat-stream');
-      box.innerHTML = '';
+  // --- ЗАГРУЗКА ИСТОРИИ ТЕКУЩЕГО ДИАЛОГА ---
+  async function loadActiveChatMessages() {
+    if (!currentSessionId) {
+      await createNewChatSession();
+      return;
+    }
 
-      if (history.length === 0) {
-        // Приветственное сообщение, если чат чистый
-        box.innerHTML = `
-          <div class="message-wrap bot">
-            <div class="avatar-bubble">
-              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><circle cx="15.5" cy="8.5" r="1.5"></circle><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-            </div>
-            <div class="msg-body">
-              <div class="bubble-content">
-                Привет! Я настроен строго по школьной программе 8 «Б». Знаю точное время МСК и все задания из базы. Задай вопрос или скинь фото!
-              </div>
+    const res = await fetch('/api/chat/history', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ session_id: currentSessionId })
+    });
+    const history = await res.json();
+    const box = document.getElementById('ai-chat-stream');
+    box.innerHTML = '';
+
+    if (history.length === 0) {
+      box.innerHTML = `
+        <div class="message-wrap bot">
+          <div class="avatar-bubble">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><circle cx="15.5" cy="8.5" r="1.5"></circle><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+          </div>
+          <div class="msg-body">
+            <div class="bubble-content">
+              Привет! Я настроен строго по программе 8 «Б». Могу решить задачу по фото или изучить конспект/файл. Чем помочь?
             </div>
           </div>
-        `;
-        return;
-      }
+        </div>
+      `;
+      return;
+    }
 
-      history.forEach(item => {
-        const att = item.attachment_data ? {
-          name: item.attachment_name,
-          data: item.attachment_data,
-          isImage: item.is_image
-        } : null;
-
-        appendMsg('ai', item.message, item.role, currentUser.name, currentUser.avatar, att);
-      });
-    } catch(e) {}
+    history.forEach(item => {
+      const att = item.attachment_data ? {
+        name: item.attachment_name,
+        data: item.attachment_data,
+        isImage: item.is_image
+      } : null;
+      appendMsg('ai', item.message, item.role, currentUser.name, currentUser.avatar, att);
+    });
   }
 
-  // --- ПОТОКОВЫЙ ИИ ЧАТ ---
+  // --- ПОТОКОВЫЙ ВЫВОД ИИ ---
   let aiAbortController = null;
 
   function stopAiStream() {
@@ -904,19 +917,14 @@
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ 
           message: txt, 
-          username: currentUser.name, 
+          username: currentUser.name,
+          session_id: currentSessionId,
           attachment_name: att ? att.name : null,
           attachment_data: att ? att.data : null,
           is_image: att ? att.isImage : false
         }),
         signal: aiAbortController.signal
       });
-
-      if (!res.ok) {
-        bubbleContent.innerText = "❌ Ошибка соединения с сервером";
-        setAiLoadingState(false);
-        return;
-      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder('utf-8');
@@ -932,34 +940,36 @@
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            const rawData = line.slice(6).trim();
-            if (rawData === '[DONE]') break;
+            const raw = line.slice(6).trim();
+            if (raw === '[DONE]') break;
 
             try {
-              const parsed = JSON.parse(rawData);
-              if (parsed.content) {
+              const p = JSON.parse(raw);
+              if (p.session_id && !currentSessionId) {
+                currentSessionId = p.session_id;
+                localStorage.setItem('school_active_chat_session', currentSessionId);
+              }
+              if (p.content) {
                 if (isFirstChunk) {
                   bubbleContent.innerHTML = '';
                   bubbleContent.classList.remove('mono');
                   isFirstChunk = false;
                 }
-                fullResponse += parsed.content;
+                fullResponse += p.content;
                 bubbleContent.innerText = fullResponse;
                 box.scrollTop = box.scrollHeight;
-              } else if (parsed.error) {
-                bubbleContent.innerText = "❌ " + parsed.error;
+              } else if (p.error) {
+                bubbleContent.innerText = "❌ " + p.error;
               }
-            } catch (e) {}
+            } catch(e) {}
           }
         }
       }
-    } catch (err) {
+    } catch(err) {
       if (err.name === 'AbortError') {
-        if (isFirstChunk) {
-          bubbleContent.innerText = "⏹️ Ответ остановлен.";
-        }
+        if (isFirstChunk) bubbleContent.innerText = "⏹️ Ответ остановлен.";
       } else {
-        bubbleContent.innerText = "❌ Ошибка отправки запроса.";
+        bubbleContent.innerText = "❌ Ошибка соединения.";
       }
     } finally {
       aiAbortController = null;
@@ -972,7 +982,7 @@
     sendAiMessage();
   }
 
-  // ГРУППОВОЙ ЧАТ
+  // --- ГРУППОВОЙ ЧАТ ---
   async function loadGroupMessages() {
     try {
       const res = await fetch('/api/group/messages');
@@ -1045,7 +1055,7 @@
     box.scrollTop = box.scrollHeight;
   }
 
-  // ЗАГРУЗКА ДАННЫХ
+  // --- ИНИЦИАЛИЗАЦИЯ ДАННЫХ ---
   async function initApp() {
     const res = await fetch('/api/dashboard');
     const d = await res.json();
@@ -1060,7 +1070,7 @@
     } else {
       d.homework.forEach(h => {
         hwBox.innerHTML += `
-          <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:8px;">
+          <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span class="mono" style="background:var(--accent); color:var(--accent-inv); font-size:0.7rem; font-weight:800; padding:2px 8px; border-radius:4px;">${h.subject}</span>
               <span class="mono" style="font-size:0.72rem; color:var(--text-dim);">ДО: ${h.deadline.toUpperCase()}</span>
@@ -1072,8 +1082,8 @@
       });
     }
 
-    // Загружаем личную историю диалога с ИИ
-    loadUserAiHistory();
+    // Загружаем текущий активный чат
+    loadActiveChatMessages();
   }
 
   function solveHw(s, t) {
@@ -1081,7 +1091,7 @@
     quickAi(`Помоги разобрать задание по предмету ${s}: ${t}`);
   }
 
-  // --- АДМИНКА (ТОЛЬКО ДЛЯ DUDO) ---
+  // --- АДМИНКА (СТРОГО ДЛЯ DUDO) ---
   async function loadAdminData() {
     if (!currentUser || currentUser.name.toLowerCase() !== 'dudo') return;
     const res = await fetch('/api/admin/data', {
@@ -1090,7 +1100,6 @@
       body: JSON.stringify({ token: currentUser.token })
     });
     if (!res.ok) {
-      alert("Доступ разрешен только dudo.");
       switchTab('ai');
       return;
     }
@@ -1103,58 +1112,85 @@
     document.getElementById('adm-ai-model').value = d.ai_model_id || '';
     document.getElementById('adm-ai-key').value = d.ai_api_key || '';
 
-    // Заполнение селекта инспектора чатов
-    const inspectSelect = document.getElementById('adm-inspect-user-select');
-    inspectSelect.innerHTML = '<option value="">-- Выберите ученика --</option>';
+    const uSelect = document.getElementById('adm-user-select');
+    uSelect.innerHTML = '<option value="">-- Выберите ученика --</option>';
 
     const uList = document.getElementById('adm-users-list');
     uList.innerHTML = '';
     d.users.forEach(u => {
-      inspectSelect.innerHTML += `<option value="${u.username}">${u.username}</option>`;
+      uSelect.innerHTML += `<option value="${u.username}">${u.username}</option>`;
       uList.innerHTML += `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.85rem;">
-          <div><b>${u.username}</b> <span class="mono" style="font-size:0.75rem; color:var(--text-dim);">${u.is_locked ? '[ПРИВЯЗАН]' : '[СВОБОДЕН]'}</span></div>
-          ${u.is_locked ? `<button class="mono" style="background:transparent; border:1px solid #ef4444; color:#ef4444; padding:3px 8px; border-radius:4px; font-size:0.72rem; cursor:pointer;" onclick="resetDev(${u.id})">СБРОСИТЬ</button>` : ''}
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); font-size:0.82rem;">
+          <div><b>${u.username}</b> <span class="mono" style="font-size:0.7rem; color:var(--text-dim);">${u.is_locked ? '[ПРИВЯЗАН]' : '[СВОБОДЕН]'}</span></div>
+          ${u.is_locked ? `<button class="mono" style="background:transparent; border:1px solid #ef4444; color:#ef4444; padding:2px 6px; border-radius:4px; font-size:0.7rem; cursor:pointer;" onclick="resetDev(${u.id})">СБРОСИТЬ</button>` : ''}
         </div>
       `;
     });
-
-    document.getElementById('adm-docs-status').innerText = "Активные конспекты в памяти: " + (d.documents.map(x => x.filename).join(', ') || 'нет');
   }
 
-  // Загрузка истории выбранного ученика админом
-  async function loadInspectedUserChat() {
-    const targetUser = document.getElementById('adm-inspect-user-select').value;
-    if (!targetUser) return;
-
-    const res = await fetch('/api/admin/user_chat', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ token: currentUser.token, target_user: targetUser })
-    });
-    const history = await res.json();
+  async function loadAdminUserSessions() {
+    const user = document.getElementById('adm-user-select').value;
+    const sSelect = document.getElementById('adm-session-select');
     const box = document.getElementById('adm-chat-history-box');
-    box.style.display = 'flex';
-    box.innerHTML = '';
+    box.style.display = 'none';
 
-    if (history.length === 0) {
-      box.innerHTML = `<div class="mono" style="font-size:0.75rem; color:var(--text-dim);">Ученик ${targetUser} еще ничего не писал ИИ.</div>`;
+    if (!user) {
+      sSelect.style.display = 'none';
       return;
     }
 
-    history.forEach(item => {
-      const isUser = item.role === 'user';
+    const res = await fetch('/api/admin/user_chats', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ token: currentUser.token, target_user: user })
+    });
+    const sessions = await res.json();
+    sSelect.innerHTML = '<option value="">-- Выберите диалог --</option>';
+    sessions.forEach(s => {
+      sSelect.innerHTML += `<option value="${s.session_id}">${s.title}</option>`;
+    });
+    sSelect.style.display = 'block';
+  }
+
+  async function loadAdminSessionMessages() {
+    const sessionId = document.getElementById('adm-session-select').value;
+    const box = document.getElementById('adm-chat-history-box');
+    if (!sessionId) {
+      box.style.display = 'none';
+      return;
+    }
+
+    const res = await fetch('/api/admin/user_chat_messages', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ token: currentUser.token, session_id: sessionId })
+    });
+    const msgs = await res.json();
+    box.style.display = 'flex';
+    box.innerHTML = '';
+
+    if (msgs.length === 0) {
+      box.innerHTML = '<div class="mono" style="font-size:0.75rem; color:var(--text-dim);">Диалог пуст</div>';
+      return;
+    }
+
+    msgs.forEach(m => {
+      const isUser = m.role === 'user';
       box.innerHTML += `
-        <div style="padding:8px 10px; border-radius:8px; background:${isUser ? 'var(--surface-elevated)' : 'var(--surface)'}; font-size:0.82rem; border:1px solid var(--border);">
-          <div class="mono" style="font-size:0.68rem; color:var(--text-dim); margin-bottom:4px;">
-            <b>${isUser ? targetUser : '8-B AI'}</b> • ${item.time || ''}
+        <div style="padding:6px 8px; border-radius:6px; background:${isUser ? 'var(--surface-elevated)' : 'var(--surface)'}; font-size:0.78rem; border:1px solid var(--border);">
+          <div class="mono" style="font-size:0.65rem; color:var(--text-dim); margin-bottom:2px;">
+            <b>${isUser ? 'Ученик' : '8-B AI'}</b> • ${m.time || ''}
           </div>
-          ${item.attachment_name ? `<div class="mono" style="font-size:0.72rem; color:var(--accent);">📁 Прикреплено: ${item.attachment_name}</div>` : ''}
-          ${item.attachment_data && item.is_image ? `<img src="${item.attachment_data}" style="max-width:140px; border-radius:6px; margin:4px 0; display:block;">` : ''}
-          <div style="white-space:pre-wrap;">${item.message || ''}</div>
+          ${m.attachment_name ? `<div class="mono" style="font-size:0.7rem; color:var(--accent);">📁 ${m.attachment_name}</div>` : ''}
+          ${m.attachment_data && m.is_image ? `<img src="${m.attachment_data}" style="max-width:120px; border-radius:4px; margin:4px 0; display:block;">` : ''}
+          <div style="white-space:pre-wrap;">${escapeHtml(m.message || '')}</div>
         </div>
       `;
     });
+  }
+
+  function escapeHtml(str) {
+    return (str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
   async function resetDev(id) {
@@ -1198,24 +1234,8 @@
         ai_api_key: document.getElementById('adm-ai-key').value.trim()
       })
     });
-    alert("Все настройки и ключи ИИ успешно сохранены!");
+    alert("Настройки сохранены!");
     initApp();
-  }
-
-  async function adminUploadFile() {
-    const file = document.getElementById('adm-doc-file').files[0];
-    if (!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('token', currentUser.token);
-
-    const res = await fetch('/api/admin/upload_doc', { method: 'POST', body: fd });
-    if (res.ok) {
-      alert("Учебник/конспект добавлен в память нейросети!");
-      loadAdminData();
-    } else {
-      alert("Ошибка при загрузке документа");
-    }
   }
 </script>
 </body>
