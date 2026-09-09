@@ -2,6 +2,7 @@ import os
 import io
 import uuid
 import json
+import base64
 from datetime import datetime, timezone, timedelta
 from flask import Flask, request, jsonify, render_template_string, Response, stream_with_context
 import pypdf
@@ -42,6 +43,24 @@ def init_db():
                 avatar TEXT,
                 auth_token TEXT
             );
+            CREATE TABLE IF NOT EXISTS chat_sessions (
+                id SERIAL PRIMARY KEY,
+                session_id VARCHAR(100) UNIQUE NOT NULL,
+                username VARCHAR(100) NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS ai_chat_history (
+                id SERIAL PRIMARY KEY,
+                session_id VARCHAR(100) NOT NULL,
+                username VARCHAR(100) NOT NULL,
+                role VARCHAR(20) NOT NULL,
+                message TEXT,
+                attachment_name TEXT,
+                attachment_data TEXT,
+                is_image BOOLEAN DEFAULT FALSE,
+                time_str VARCHAR(50)
+            );
             CREATE TABLE IF NOT EXISTS homework (
                 id SERIAL PRIMARY KEY,
                 subject VARCHAR(100) NOT NULL,
@@ -66,16 +85,6 @@ def init_db():
                 attachment_name TEXT,
                 attachment_data TEXT,
                 is_image BOOLEAN DEFAULT FALSE
-            );
-            CREATE TABLE IF NOT EXISTS ai_chat_history (
-                id SERIAL PRIMARY KEY,
-                username VARCHAR(100) NOT NULL,
-                role VARCHAR(20) NOT NULL,
-                message TEXT,
-                attachment_name TEXT,
-                attachment_data TEXT,
-                is_image BOOLEAN DEFAULT FALSE,
-                time_str VARCHAR(50)
             );
         """)
         c.execute("""
@@ -104,6 +113,24 @@ def init_db():
                 avatar TEXT,
                 auth_token TEXT
             );
+            CREATE TABLE IF NOT EXISTS chat_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT UNIQUE NOT NULL,
+                username TEXT NOT NULL,
+                title TEXT NOT NULL,
+                updated_at TEXT
+            );
+            CREATE TABLE IF NOT EXISTS ai_chat_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                username TEXT NOT NULL,
+                role TEXT NOT NULL,
+                message TEXT,
+                attachment_name TEXT,
+                attachment_data TEXT,
+                is_image INTEGER DEFAULT 0,
+                time_str TEXT
+            );
             CREATE TABLE IF NOT EXISTS homework (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 subject TEXT NOT NULL,
@@ -129,16 +156,6 @@ def init_db():
                 attachment_data TEXT,
                 is_image INTEGER DEFAULT 0
             );
-            CREATE TABLE IF NOT EXISTS ai_chat_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL,
-                role TEXT NOT NULL,
-                message TEXT,
-                attachment_name TEXT,
-                attachment_data TEXT,
-                is_image INTEGER DEFAULT 0,
-                time_str TEXT
-            );
             INSERT OR IGNORE INTO users (username, password, role) VALUES ('dudo', 'dudo_2026', 'admin');
             INSERT OR IGNORE INTO settings (key, value) VALUES ('banner', 'Добро пожаловать в закрытую платформу 8 «Б»!');
             INSERT OR IGNORE INTO settings (key, value) VALUES ('system_prompt', 'Ты личный наставник 8 «Б» класса.');
@@ -153,7 +170,6 @@ def init_db():
 
 init_db()
 
-# ТОЧНОЕ МОСКОВСКОЕ ВРЕМЯ (МСК, UTC+3)
 def get_msk_time():
     msk_tz = timezone(timedelta(hours=3))
     now = datetime.now(msk_tz)
@@ -183,6 +199,28 @@ def verify_admin(token):
     row = c.fetchone()
     conn.close()
     return bool(row and row[0] == 'admin' and row[1] == 'dudo')
+
+# Функция извлечения текста из прикрепленного файла
+def extract_text_from_attachment(att_data, att_name):
+    if not att_data or not att_name:
+        return ""
+    try:
+        if "," in att_data:
+            base64_str = att_data.split(",", 1)[1]
+        else:
+            base64_str = att_data
+        raw_bytes = base64.b64decode(base64_str)
+
+        if att_name.lower().endswith(".pdf"):
+            reader = pypdf.PdfReader(io.BytesIO(raw_bytes))
+            text = ""
+            for page in reader.pages:
+                text += (page.extract_text() or "") + "\n"
+            return text.strip()
+        else:
+            return raw_bytes.decode("utf-8", errors="ignore").strip()
+    except Exception as e:
+        return f"[Не удалось прочитать содержимое файла: {str(e)}]"
 
 # --- РОУТЫ ---
 
@@ -255,6 +293,7 @@ def update_profile():
     c = conn.cursor()
     ph = "%s" if IS_POSTGRES else "?"
     c.execute(f"UPDATE users SET username={ph}, avatar={ph} WHERE username={ph}", (new_name, avatar, username))
+    c.execute(f"UPDATE chat_sessions SET username={ph} WHERE username={ph}", (new_name, username))
     c.execute(f"UPDATE ai_chat_history SET username={ph} WHERE username={ph}", (new_name, username))
     conn.commit()
     conn.close()
@@ -274,13 +313,88 @@ def dashboard():
         "homework": [{"id": h[0], "subject": h[1], "task": h[2], "deadline": h[3]} for h in hw]
     })
 
-# --- ИСТОРИЯ ЧАТА ДЛЯ ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ ---
-@app.route("/api/chat/history", methods=["POST"])
-def get_user_chat_history():
+# --- УПРАВЛЕНИЕ СЕССИЯМИ ЧАТОВ (КАК В CHATGPT/GEMINI) ---
+
+@app.route("/api/chats/list", methods=["POST"])
+def list_chats():
     data = request.json or {}
     username = data.get("username", "").strip().lower()
-
     if not username:
+        return jsonify([])
+
+    conn = get_db()
+    c = conn.cursor()
+    ph = "%s" if IS_POSTGRES else "?"
+    c.execute(f"SELECT session_id, title FROM chat_sessions WHERE username={ph} ORDER BY id DESC", (username,))
+    rows = c.fetchall()
+    conn.close()
+    return jsonify([{"session_id": r[0], "title": r[1]} for r in rows])
+
+@app.route("/api/chats/new", methods=["POST"])
+def create_new_chat():
+    data = request.json or {}
+    username = data.get("username", "").strip().lower()
+    if not username:
+        return jsonify({"error": "No user"}), 400
+
+    new_session_id = uuid.uuid4().hex[:12]
+    conn = get_db()
+    c = conn.cursor()
+    ph = "%s" if IS_POSTGRES else "?"
+    c.execute(f"INSERT INTO chat_sessions (session_id, username, title) VALUES ({ph}, {ph}, 'Новый чат')", 
+              (new_session_id, username))
+    conn.commit()
+    conn.close()
+    return jsonify({"session_id": new_session_id, "title": "Новый чат"})
+
+@app.route("/api/chats/rename", methods=["POST"])
+def rename_chat():
+    data = request.json or {}
+    session_id = data.get("session_id")
+    title = data.get("title", "").strip() or "Без названия"
+    username = data.get("username", "").strip().lower()
+
+    conn = get_db()
+    c = conn.cursor()
+    ph = "%s" if IS_POSTGRES else "?"
+    c.execute(f"UPDATE chat_sessions SET title={ph} WHERE session_id={ph} AND username={ph}", 
+              (title[:50], session_id, username))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/chats/delete", methods=["POST"])
+def delete_chat():
+    data = request.json or {}
+    session_id = data.get("session_id")
+    username = data.get("username", "").strip().lower()
+
+    conn = get_db()
+    c = conn.cursor()
+    ph = "%s" if IS_POSTGRES else "?"
+    c.execute(f"DELETE FROM chat_sessions WHERE session_id={ph} AND username={ph}", (session_id, username))
+    c.execute(f"DELETE FROM ai_chat_history WHERE session_id={ph}", (session_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/chats/clear", methods=["POST"])
+def clear_chat_history():
+    data = request.json or {}
+    session_id = data.get("session_id")
+    conn = get_db()
+    c = conn.cursor()
+    ph = "%s" if IS_POSTGRES else "?"
+    c.execute(f"DELETE FROM ai_chat_history WHERE session_id={ph}", (session_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/chat/history", methods=["POST"])
+def get_chat_history():
+    data = request.json or {}
+    session_id = data.get("session_id")
+    if not session_id:
         return jsonify([])
 
     conn = get_db()
@@ -289,9 +403,9 @@ def get_user_chat_history():
     c.execute(f"""
         SELECT role, message, attachment_name, attachment_data, is_image, time_str 
         FROM ai_chat_history 
-        WHERE username={ph} 
+        WHERE session_id={ph} 
         ORDER BY id ASC
-    """, (username,))
+    """, (session_id,))
     rows = c.fetchall()
     conn.close()
 
@@ -304,39 +418,52 @@ def get_user_chat_history():
         "time": r[5]
     } for r in rows])
 
-# --- ПОТОКОВЫЙ ВЫЗОВ ИИ (СОХРАНЕНИЕ В ИСТОРИЮ) ---
+# --- ПОТОКОВЫЙ ВЫЗОВ ИИ (С ПОДДЕРЖКОЙ ФОТО И ФАЙЛОВ) ---
 @app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.json or {}
-    user_msg = data.get("message", "")
+    user_msg = data.get("message", "").strip()
     username = data.get("username", "Ученик").strip().lower()
+    session_id = data.get("session_id")
     att_name = data.get("attachment_name")
     att_data = data.get("attachment_data")
     is_img = bool(data.get("is_image", False))
     t = get_msk_time()
 
-    # 1. Сохраняем сообщение пользователя в историю
     conn = get_db()
     c = conn.cursor()
     ph = "%s" if IS_POSTGRES else "?"
+
+    # Если сессии нет, создаем
+    if not session_id:
+        session_id = uuid.uuid4().hex[:12]
+        c.execute(f"INSERT INTO chat_sessions (session_id, username, title) VALUES ({ph}, {ph}, 'Новый чат')", 
+                  (session_id, username))
+        conn.commit()
+
+    # Проверяем, нужно ли дать автоматическое название чату
+    c.execute(f"SELECT title FROM chat_sessions WHERE session_id={ph}", (session_id,))
+    s_row = c.fetchone()
+    if s_row and s_row[0] == "Новый чат":
+        auto_title = (user_msg or att_name or "Диалог")[:28]
+        c.execute(f"UPDATE chat_sessions SET title={ph} WHERE session_id={ph}", (auto_title, session_id))
+        conn.commit()
+
+    # Сохраняем сообщение пользователя в БД
     c.execute(f"""
-        INSERT INTO ai_chat_history (username, role, message, attachment_name, attachment_data, is_image, time_str)
-        VALUES ({ph}, 'user', {ph}, {ph}, {ph}, {ph}, {ph})
-    """, (username, user_msg, att_name, att_data, is_img, t["time"]))
+        INSERT INTO ai_chat_history (session_id, username, role, message, attachment_name, attachment_data, is_image, time_str)
+        VALUES ({ph}, {ph}, 'user', {ph}, {ph}, {ph}, {ph}, {ph})
+    """, (session_id, username, user_msg, att_name, att_data, is_img, t["time"]))
     conn.commit()
 
-    # 2. Получаем данные для контекста
+    # Получаем актуальные ДЗ и документы
     c.execute("SELECT subject, task, deadline FROM homework")
     hw_rows = c.fetchall()
     c.execute("SELECT filename, content FROM documents")
     doc_rows = c.fetchall()
     conn.close()
 
-    if hw_rows:
-        hw_list_str = "\n".join([f"- {h[0]}: {h[1]} (Сдать до: {h[2]})" for h in hw_rows])
-    else:
-        hw_list_str = "Заданий пока нет."
-
+    hw_list_str = "\n".join([f"- {h[0]}: {h[1]} (Сдать до: {h[2]})" for h in hw_rows]) if hw_rows else "Заданий в базе нет."
     docs_str = "\n".join([f"[{d[0]}]: {d[1][:500]}" for d in doc_rows])
 
     system_instruction = f"""
@@ -350,12 +477,13 @@ def chat():
 АКТУАЛЬНАЯ БАЗА ДОМАШНИХ ЗАДАНИЙ 8 «Б» КЛАССА:
 {hw_list_str}
 
-МАТЕРИАЛЫ И КОНСПЕКТЫ ИЗ УЧЕБНИКОВ:
+МАТЕРИАЛЫ ИЗ УЧЕБНИКОВ:
 {docs_str}
 
 ИНСТРУКЦИИ:
-1. Если ученик спрашивает «какая домашка?», «что задали?» — бери информацию ТОЛЬКО из базы выше. Учитывай день недели ({t['day']}).
-2. Помогай решать задачи пошагово, не давай тупо ответ сразу.
+1. Если ученик спрашивает «какая домашка?», «что задали?» — бери информацию ТОЛЬКО из базы выше. Учитывай день недели ({t['day']}) и дедлайны.
+2. Не давай сразу тупой готовый ответ, объясняй формулы и ход мыслей пошагово.
+3. Если к сообщению прикреплен текст файла — внимательно изучи его и отвечай строго по его содержимому.
 """
 
     base_url = os.environ.get("AI_BASE_URL") or get_setting("ai_base_url", "https://api.openai.com/v1")
@@ -364,8 +492,8 @@ def chat():
 
     def event_stream():
         if not api_key:
-            err_msg = "⚠️ API-ключ не настроен! Администратор (dudo) должен указать Base URL, Model ID и API Key во вкладке «АДМИНКА»."
-            yield f"data: {json.dumps({'error': err_msg})}\n\n"
+            err = "⚠️ API-ключ не настроен! Администратор (dudo) должен указать Base URL, Model ID и API Key во вкладке «АДМИНКА»."
+            yield f"data: {json.dumps({'error': err})}\n\n"
             yield "data: [DONE]\n\n"
             return
 
@@ -373,11 +501,17 @@ def chat():
         try:
             client = OpenAI(base_url=base_url.rstrip("/"), api_key=api_key)
 
+            # Обработка фото (Vision) или файлов (PDF/TXT)
             if att_data and is_img:
+                # Для изображений: передаем URL с base64 (сжатым на фронте)
                 user_content = [
-                    {"type": "text", "text": user_msg or "Помоги разобрать задачу с этого фото."},
+                    {"type": "text", "text": user_msg or "Пожалуйста, посмотри на это фото и помоги с решением задачи."},
                     {"type": "image_url", "image_url": {"url": att_data}}
                 ]
+            elif att_data and not is_img:
+                # Для документов: извлекаем текст и передаем модели
+                file_text = extract_text_from_attachment(att_data, att_name)
+                user_content = f"{user_msg}\n\n[СОДЕРЖИМОЕ ПРИКРЕПЛЕННОГО ФАЙЛА «{att_name}»]:\n{file_text}\n[КОНЕЦ ФАЙЛА]\n"
             else:
                 user_content = user_msg
 
@@ -397,18 +531,18 @@ def chat():
                     delta = chunk.choices[0].delta.content
                     if delta:
                         full_bot_reply += delta
-                        yield f"data: {json.dumps({'content': delta})}\n\n"
+                        yield f"data: {json.dumps({'content': delta, 'session_id': session_id})}\n\n"
 
-            # 3. Сохраняем полный ответ бота в историю после окончания стрима
+            # Сохраняем ответ ИИ в историю
             if full_bot_reply:
-                stream_conn = get_db()
-                sc = stream_conn.cursor()
+                s_conn = get_db()
+                sc = s_conn.cursor()
                 sc.execute(f"""
-                    INSERT INTO ai_chat_history (username, role, message, time_str)
-                    VALUES ({ph}, 'bot', {ph}, {ph})
-                """, (username, full_bot_reply, t["time"]))
-                stream_conn.commit()
-                stream_conn.close()
+                    INSERT INTO ai_chat_history (session_id, username, role, message, time_str)
+                    VALUES ({ph}, {ph}, 'bot', {ph}, {ph})
+                """, (session_id, username, full_bot_reply, t["time"]))
+                s_conn.commit()
+                s_conn.close()
 
             yield "data: [DONE]\n\n"
 
@@ -428,13 +562,8 @@ def group_messages():
     conn.close()
 
     return jsonify([{
-        "sender": r[0],
-        "avatar": r[1],
-        "text": r[2],
-        "time": r[3],
-        "attachment_name": r[4],
-        "attachment_data": r[5],
-        "is_image": bool(r[6])
+        "sender": r[0], "avatar": r[1], "text": r[2], "time": r[3],
+        "attachment_name": r[4], "attachment_data": r[5], "is_image": bool(r[6])
     } for r in rows])
 
 @app.route("/api/group/send", methods=["POST"])
@@ -460,13 +589,12 @@ def group_send():
 
     return jsonify({"success": True, "time": time_str})
 
-# --- АДМИНКА (СТРОГО ТОЛЬКО DUDO) ---
-
+# --- АДМИНКА (СТРОГО ДЛЯ DUDO) ---
 @app.route("/api/admin/data", methods=["POST"])
 def admin_data():
     token = (request.json or {}).get("token")
     if not verify_admin(token):
-        return jsonify({"error": "Доступ запрещен. Только для администратора dudo."}), 403
+        return jsonify({"error": "Доступ запрещен. Только для dudo."}), 403
 
     conn = get_db()
     c = conn.cursor()
@@ -487,13 +615,27 @@ def admin_data():
         "ai_api_key": get_setting("ai_api_key", "")
     })
 
-# Просмотр истории чата любого ученика админом dudo
-@app.route("/api/admin/user_chat", methods=["POST"])
-def admin_user_chat():
+@app.route("/api/admin/user_chats", methods=["POST"])
+def admin_user_chats():
     data = request.json or {}
     token = data.get("token")
     target_user = data.get("target_user", "").strip().lower()
+    if not verify_admin(token):
+        return jsonify({"error": "Доступ запрещен"}), 403
 
+    conn = get_db()
+    c = conn.cursor()
+    ph = "%s" if IS_POSTGRES else "?"
+    c.execute(f"SELECT session_id, title FROM chat_sessions WHERE username={ph} ORDER BY id DESC", (target_user,))
+    rows = c.fetchall()
+    conn.close()
+    return jsonify([{"session_id": r[0], "title": r[1]} for r in rows])
+
+@app.route("/api/admin/user_chat_messages", methods=["POST"])
+def admin_user_chat_messages():
+    data = request.json or {}
+    token = data.get("token")
+    session_id = data.get("session_id")
     if not verify_admin(token):
         return jsonify({"error": "Доступ запрещен"}), 403
 
@@ -503,19 +645,15 @@ def admin_user_chat():
     c.execute(f"""
         SELECT role, message, attachment_name, attachment_data, is_image, time_str 
         FROM ai_chat_history 
-        WHERE username={ph} 
+        WHERE session_id={ph} 
         ORDER BY id ASC
-    """, (target_user,))
+    """, (session_id,))
     rows = c.fetchall()
     conn.close()
 
     return jsonify([{
-        "role": r[0],
-        "message": r[1],
-        "attachment_name": r[2],
-        "attachment_data": r[3],
-        "is_image": bool(r[4]),
-        "time": r[5]
+        "role": r[0], "message": r[1], "attachment_name": r[2], 
+        "attachment_data": r[3], "is_image": bool(r[4]), "time": r[5]
     } for r in rows])
 
 @app.route("/api/admin/reset_device", methods=["POST"])
