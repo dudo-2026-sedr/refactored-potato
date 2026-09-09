@@ -6,16 +6,13 @@ from flask import Flask, request, jsonify, render_template_string
 import pypdf
 
 app = Flask(__name__, template_folder=".")
-app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # Лимит 32MB на фото/файлы
+app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32 МБ макс. размер файлов
 
-# Подключение к базе (PostgreSQL на Railway или SQLite локально)
 DATABASE_URL = os.environ.get("DATABASE_URL")
 IS_POSTGRES = bool(DATABASE_URL)
 
 if IS_POSTGRES:
     import psycopg2
-    from psycopg2.extras import RealDictCursor
-    # Railway иногда передает postgres:// вместо postgresql://
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
@@ -33,7 +30,6 @@ def init_db():
     c = conn.cursor()
 
     if IS_POSTGRES:
-        # PostgreSQL таблицы
         c.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -41,7 +37,8 @@ def init_db():
                 password VARCHAR(100) NOT NULL,
                 role VARCHAR(20) NOT NULL DEFAULT 'student',
                 device_token TEXT,
-                avatar TEXT
+                avatar TEXT,
+                auth_token TEXT
             );
             CREATE TABLE IF NOT EXISTS homework (
                 id SERIAL PRIMARY KEY,
@@ -69,24 +66,23 @@ def init_db():
                 is_image BOOLEAN DEFAULT FALSE
             );
         """)
-        # Дефолтный админ dudo и базовые настройки
+        # Создаем dudo с правами админа
         c.execute("""
             INSERT INTO users (username, password, role) 
             VALUES ('dudo', 'dudo_2026', 'admin')
             ON CONFLICT (username) DO NOTHING;
-            
+
             INSERT INTO users (username, password, role) 
             VALUES ('артем', '1234', 'student')
             ON CONFLICT (username) DO NOTHING;
 
             INSERT INTO settings (key, value) VALUES 
-            ('banner', 'Добро пожаловать в закрытую систему 8 «Б»!'),
-            ('system_prompt', 'Ты личный наставник 8 «Б» класса. Помогай с ДЗ, задавай наводящие вопросы, объясняй формулы и не давай бездумно списывать.'),
-            ('facts', 'По физике всегда обязательно писать единицы СИ в графе Дано.')
+            ('banner', 'Добро пожаловать в закрытую платформу 8 «Б»!'),
+            ('system_prompt', 'Ты личный наставник 8 «Б» класса. Помогай решать задачи пошагово, объясняй формулы, не давай прямое списывание.'),
+            ('facts', 'Учительница по физике снижает балл за отсутствие единиц СИ в Дано.')
             ON CONFLICT (key) DO NOTHING;
         """)
     else:
-        # SQLite таблицы
         c.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,7 +90,8 @@ def init_db():
                 password TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT 'student',
                 device_token TEXT,
-                avatar TEXT
+                avatar TEXT,
+                auth_token TEXT
             );
         """)
         c.execute("""
@@ -132,8 +129,8 @@ def init_db():
         """)
         c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('dudo', 'dudo_2026', 'admin');")
         c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('артем', '1234', 'student');")
-        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('banner', 'Добро пожаловать в закрытую систему 8 «Б»!');")
-        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('system_prompt', 'Ты личный наставник 8 «Б» класса.');")
+        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('banner', 'Добро пожаловать в закрытую платформу 8 «Б»!');")
+        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('system_prompt', 'Ты наставник 8 «Б». Помогай пошагово.');")
         c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('facts', 'По физике пишем единицы СИ.');")
 
     conn.commit()
@@ -159,6 +156,20 @@ def get_setting(key, default=""):
     conn.close()
     return res[0] if res else default
 
+# ПРОВЕРКА ПРАВ АДМИНИСТРАТОРА (СТРОГО ТОЛЬКО ДЛЯ DUDO)
+def verify_admin(token):
+    if not token:
+        return False
+    conn = get_db()
+    c = conn.cursor()
+    ph = "%s" if IS_POSTGRES else "?"
+    c.execute(f"SELECT role, username FROM users WHERE auth_token={ph}", (token,))
+    row = c.fetchone()
+    conn.close()
+    if row and row[0] == 'admin' and row[1] == 'dudo':
+        return True
+    return False
+
 # --- МАРШРУТЫ ---
 
 @app.route("/")
@@ -166,7 +177,6 @@ def index():
     with open("index.html", "r", encoding="utf-8") as f:
         return render_template_string(f.read())
 
-# Вход с привязкой устройства (Device Lock)
 @app.route("/api/login", methods=["POST"])
 def login():
     data = request.json or {}
@@ -187,33 +197,49 @@ def login():
 
     user_id, uname, role, bound_token, avatar = user[0], user[1], user[2], user[3], user[4]
 
-    # Для админа dudo вход разрешен с любого устройства без блокировок
+    # Генерация сессионного auth_token
+    session_token = uuid.uuid4().hex
+
+    # Device Lock: для dudo ограничений нет. Для учеников блокирует чужие устройства.
     if role != 'admin':
         if bound_token is None:
-            c.execute(f"UPDATE users SET device_token={ph} WHERE id={ph}", (device_token, user_id))
+            c.execute(f"UPDATE users SET device_token={ph}, auth_token={ph} WHERE id={ph}", (device_token, session_token, user_id))
             conn.commit()
         elif bound_token != device_token:
             conn.close()
             return jsonify({
                 "success": False, 
-                "error": "❌ Этот аккаунт уже привязан к другому устройству! Передача аккаунтов запрещена. Обратись к dudo для сброса."
+                "error": "❌ Доступ заблокирован! Этот аккаунт уже привязан к другому телефону. Обратись к dudo для сброса."
             }), 403
+        else:
+            c.execute(f"UPDATE users SET auth_token={ph} WHERE id={ph}", (session_token, user_id))
+            conn.commit()
+    else:
+        c.execute(f"UPDATE users SET auth_token={ph} WHERE id={ph}", (session_token, user_id))
+        conn.commit()
 
     conn.close()
     return jsonify({
         "success": True, 
         "username": uname, 
         "role": role,
-        "avatar": avatar or ""
+        "avatar": avatar or "",
+        "token": session_token
     })
 
-# Обновление профиля
 @app.route("/api/profile/update", methods=["POST"])
 def update_profile():
     data = request.json or {}
     username = data.get("username", "").strip().lower()
     new_name = data.get("new_name", "").strip().lower()
     avatar = data.get("avatar", "")
+
+    if not new_name:
+        return jsonify({"success": False, "error": "Имя не может быть пустым"}), 400
+
+    # Защита: нельзя присвоить себе ник dudo
+    if new_name == 'dudo' and username != 'dudo':
+        return jsonify({"success": False, "error": "Имя dudo зарезервировано администратором"}), 403
 
     conn = get_db()
     c = conn.cursor()
@@ -223,7 +249,6 @@ def update_profile():
     conn.close()
     return jsonify({"success": True, "username": new_name, "avatar": avatar})
 
-# Дашборд
 @app.route("/api/dashboard", methods=["GET"])
 def dashboard():
     conn = get_db()
@@ -238,7 +263,6 @@ def dashboard():
         "homework": [{"id": h[0], "subject": h[1], "task": h[2], "deadline": h[3]} for h in hw]
     })
 
-# Запрос к ИИ
 @app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.json or {}
@@ -256,26 +280,24 @@ def chat():
     conn.close()
 
     hw_text = "; ".join([f"{s[0]}: {s[1]}" for s in hw])
-    docs_text = "\n".join([f"[{d[0]}]: {d[1][:600]}" for d in docs])
+    docs_text = "\n".join([f"[{d[0]}]: {d[1][:500]}" for d in docs])
 
     system_prompt = f"""
     {get_setting('system_prompt')}
-    ИНФО: Сегодня {t['day']}, {t['date']}, {t['time']}.
+    Сегодня: {t['day']}, {t['date']}, {t['time']}.
     Ученик: {username}.
-    Домашка: {hw_text}.
+    Актуальные ДЗ: {hw_text}.
     Инсайды: {get_setting('facts')}.
-    Материалы: {docs_text}.
+    Конспекты: {docs_text}.
     """
 
-    # Ответ ИИ (сюда подключается Gemini API)
     reply = f"Привет, {username.capitalize()}! Сейчас {t['day']} ({t['time']}). "
     if attachment_name:
         reply += f"Я изучил прикрепленный файл «{attachment_name}». "
-    reply += f"По твоему вопросу: «{user_msg}» — с чего начнем решение?"
+    reply += f"Давай разберем задачу по шагам. Что тебе известно по условию?"
 
     return jsonify({"reply": reply})
 
-# Групповой чат класса
 @app.route("/api/group/messages", methods=["GET"])
 def group_messages():
     conn = get_db()
@@ -317,10 +339,14 @@ def group_send():
 
     return jsonify({"success": True, "time": time_str})
 
-# --- АДМИН-МЕТОДЫ (Только для dudo) ---
+# --- СТРОГО ЗАЩИЩЕННЫЕ МАРШРУТЫ АДМИНА (ТОЛЬКО DUDO) ---
 
-@app.route("/api/admin/data", methods=["GET"])
+@app.route("/api/admin/data", methods=["POST"])
 def admin_data():
+    token = (request.json or {}).get("token")
+    if not verify_admin(token):
+        return jsonify({"error": "Доступ запрещен. Только для администратора dudo."}), 403
+
     conn = get_db()
     c = conn.cursor()
     c.execute("SELECT id, username, device_token FROM users WHERE role='student'")
@@ -339,63 +365,79 @@ def admin_data():
 
 @app.route("/api/admin/reset_device", methods=["POST"])
 def reset_device():
-    uid = request.json.get("user_id")
+    data = request.json or {}
+    if not verify_admin(data.get("token")):
+        return jsonify({"error": "Доступ запрещен"}), 403
+
+    uid = data.get("user_id")
     conn = get_db()
     c = conn.cursor()
     ph = "%s" if IS_POSTGRES else "?"
-    c.execute(f"UPDATE users SET device_token=NULL WHERE id={ph}", (uid,))
+    c.execute(f"UPDATE users SET device_token=NULL, auth_token=NULL WHERE id={ph}", (uid,))
     conn.commit()
     conn.close()
     return jsonify({"success": True})
 
-@app.route("/api/admin/add_user", methods=["POST"])
-def add_user():
-    d = request.json or {}
-    conn = get_db()
-    c = conn.cursor()
-    ph = "%s" if IS_POSTGRES else "?"
-    try:
-        c.execute(f"INSERT INTO users (username, password, role) VALUES ({ph}, {ph}, 'student')", 
-                  (d['username'].strip().lower(), d['password']))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True})
-    except:
-        conn.close()
-        return jsonify({"success": False, "error": "Такой ученик уже есть"}), 400
-
 @app.route("/api/admin/save_hw", methods=["POST"])
 def save_hw():
-    d = request.json or {}
+    data = request.json or {}
+    if not verify_admin(data.get("token")):
+        return jsonify({"error": "Доступ запрещен"}), 403
+
     conn = get_db()
     c = conn.cursor()
     ph = "%s" if IS_POSTGRES else "?"
     c.execute(f"INSERT INTO homework (subject, task, deadline) VALUES ({ph}, {ph}, {ph})", 
-              (d['subject'], d['task'], d['deadline']))
+              (data['subject'], data['task'], data['deadline']))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/admin/delete_hw", methods=["POST"])
+def delete_hw():
+    data = request.json or {}
+    if not verify_admin(data.get("token")):
+        return jsonify({"error": "Доступ запрещен"}), 403
+
+    hid = data.get("id")
+    conn = get_db()
+    c = conn.cursor()
+    ph = "%s" if IS_POSTGRES else "?"
+    c.execute(f"DELETE FROM homework WHERE id={ph}", (hid,))
     conn.commit()
     conn.close()
     return jsonify({"success": True})
 
 @app.route("/api/admin/save_settings", methods=["POST"])
 def save_settings():
-    d = request.json or {}
+    data = request.json or {}
+    if not verify_admin(data.get("token")):
+        return jsonify({"error": "Доступ запрещен"}), 403
+
+    banner = data.get("banner", "")
+    prompt = data.get("system_prompt", "")
+    facts = data.get("facts", "")
+
     conn = get_db()
     c = conn.cursor()
-    ph = "%s" if IS_POSTGRES else "?"
     if IS_POSTGRES:
-        c.execute("INSERT INTO settings (key, value) VALUES ('banner', %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (d['banner'],))
-        c.execute("INSERT INTO settings (key, value) VALUES ('system_prompt', %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (d['system_prompt'],))
-        c.execute("INSERT INTO settings (key, value) VALUES ('facts', %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (d['facts'],))
+        c.execute("INSERT INTO settings (key, value) VALUES ('banner', %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (banner,))
+        c.execute("INSERT INTO settings (key, value) VALUES ('system_prompt', %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (prompt,))
+        c.execute("INSERT INTO settings (key, value) VALUES ('facts', %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (facts,))
     else:
-        c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('banner', ?)", (d['banner'],))
-        c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('system_prompt', ?)", (d['system_prompt'],))
-        c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('facts', ?)", (d['facts'],))
+        c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('banner', ?)", (banner,))
+        c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('system_prompt', ?)", (prompt,))
+        c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('facts', ?)", (facts,))
     conn.commit()
     conn.close()
     return jsonify({"success": True})
 
 @app.route("/api/admin/upload_doc", methods=["POST"])
 def upload_doc():
+    token = request.form.get("token")
+    if not verify_admin(token):
+        return jsonify({"error": "Доступ запрещен"}), 403
+
     if 'file' not in request.files:
         return jsonify({"success": False}), 400
     file = request.files['file']
