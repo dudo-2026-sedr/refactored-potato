@@ -9,6 +9,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+  <!-- БИБЛИОТЕКИ ДЛЯ РЕНДЕРИНГА ФОРМУЛ (KATEX) И РАЗМЕТКИ (MARKED) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
   <style>
     :root {
       --bg: #09090b;
@@ -99,13 +105,12 @@
     .tab-btn.active { background: var(--accent); color: var(--accent-inv); }
     .tab-btn.active svg { stroke: var(--accent-inv); }
 
-    /* АДМИНКА СКРЫТА ДЛЯ ВСЕХ КРОМЕ DUDO */
     #admin-tab-btn { display: none !important; }
 
     .view-screen { display: none; flex-direction: column; flex: 1; }
     .view-screen.active { display: flex; }
 
-    /* ЧАТ: ПАНЕЛЬ ДИАЛОГА */
+    /* ЧАТ */
     .chat-top-info {
       padding: 8px 16px; display: flex; justify-content: space-between; align-items: center;
       background: var(--surface); border-bottom: 1px solid var(--border); font-size: 0.75rem;
@@ -125,9 +130,8 @@
       border-radius: 20px; font-size: 0.72rem; font-weight: 600; cursor: pointer; white-space: nowrap;
     }
 
-    /* ПОТОК СООБЩЕНИЙ */
     .chat-container { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
-    .message-wrap { display: flex; gap: 10px; max-width: 88%; animation: fadeIn 0.2s ease forwards; }
+    .message-wrap { display: flex; gap: 10px; max-width: 90%; animation: fadeIn 0.2s ease forwards; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
     .message-wrap.user { align-self: flex-end; flex-direction: row-reverse; }
     .message-wrap.bot, .message-wrap.other { align-self: flex-start; }
@@ -142,22 +146,42 @@
     .msg-body { display: flex; flex-direction: column; gap: 4px; max-width: 100%; }
     .msg-meta { font-size: 0.68rem; color: var(--text-dim); display: flex; gap: 6px; }
 
+    /* СТИЛИЗАЦИЯ ТЕКСТА И МАТЕМАТИКИ */
     .bubble-content {
-      padding: 10px 12px; font-size: 0.88rem; line-height: 1.5; word-break: break-word;
-      border-radius: 14px; white-space: pre-wrap;
+      padding: 10px 14px; font-size: 0.88rem; line-height: 1.55; word-break: break-word;
+      border-radius: 14px;
     }
     .message-wrap.user .bubble-content { background: var(--bubble-user); color: var(--bubble-user-text); border-bottom-right-radius: 4px; }
     .message-wrap.bot .bubble-content, .message-wrap.other .bubble-content { background: var(--bubble-bot); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
 
+    .bubble-content h1, .bubble-content h2, .bubble-content h3, .bubble-content h4 {
+      margin-top: 12px; margin-bottom: 6px; font-weight: 700; line-height: 1.3;
+    }
+    .bubble-content h1 { font-size: 1.15rem; }
+    .bubble-content h2 { font-size: 1.02rem; }
+    .bubble-content h3 { font-size: 0.92rem; }
+    .bubble-content p { margin-bottom: 8px; }
+    .bubble-content p:last-child { margin-bottom: 0; }
+    .bubble-content ul, .bubble-content ol { margin-left: 20px; margin-bottom: 8px; }
+    .bubble-content li { margin-bottom: 4px; }
+    .bubble-content hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+    
+    .bubble-content pre {
+      background: var(--surface-elevated); padding: 8px 10px; border-radius: 6px;
+      overflow-x: auto; margin: 8px 0; border: 1px solid var(--border);
+    }
+    .bubble-content code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+      background: rgba(125, 125, 125, 0.15); padding: 2px 5px; border-radius: 4px;
+    }
+
+    /* ДРОБИ И ФОРМУЛЫ KATEX */
+    .katex { font-size: 1.05em; line-height: 1.2; }
+    .katex-display { margin: 10px 0 !important; overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+
     .msg-img-preview {
-      max-width: 100%;
-      width: auto;
-      max-height: 280px;
-      border-radius: 8px;
-      margin-bottom: 6px;
-      border: 1px solid var(--border);
-      display: block;
-      background: #18181b;
+      max-width: 100%; width: auto; max-height: 280px; border-radius: 8px;
+      margin-bottom: 6px; border: 1px solid var(--border); display: block; background: #18181b;
     }
     .msg-file-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; background: var(--surface-hover); border: 1px solid var(--border); border-radius: 6px; font-size: 0.72rem; margin-bottom: 4px; }
 
@@ -186,7 +210,6 @@
     .btn-attach svg { width: 18px; height: 18px; stroke: currentColor; }
     .text-input { flex: 1; background: transparent; border: none; outline: none; color: var(--text); font-size: 0.88rem; }
 
-    /* КНОПКА ОТПРАВКИ / ОСТАНОВКИ */
     .btn-send {
       background: var(--accent); color: var(--accent-inv); border: none; width: 34px; height: 34px;
       border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;
@@ -300,7 +323,6 @@
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
       ПРОФИЛЬ
     </button>
-    <!-- АДМИН (СКРЫТ ДЛЯ ВСЕХ КРОМЕ DUDO) -->
     <button class="tab-btn" id="admin-tab-btn" onclick="switchTab('admin')">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       АДМИН
@@ -340,7 +362,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
         </button>
         <input type="text" class="text-input" id="ai-input" placeholder="Спроси или скинь фото задачи..." onkeydown="if(event.key==='Enter') handleAiButton()">
-        <!-- КНОПКА ОТПРАВКИ / ОСТАНОВКИ -->
         <button class="btn-send" id="ai-send-btn" onclick="handleAiButton()" title="Отправить">
           <svg id="ai-btn-icon-send" viewBox="0 0 24 24" fill="none" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
           <svg id="ai-btn-icon-stop" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
@@ -412,7 +433,7 @@
         <div id="adm-chat-history-box" style="display:none; max-height:280px; overflow-y:auto; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:8px;"></div>
       </div>
 
-      <!-- СОЗДАНИЕ НОВЫХ УЧЕНИКОВ / ПОЛЬЗОВАТЕЛЕЙ -->
+      <!-- СОЗДАНИЕ НОВЫХ УЧЕНИКОВ -->
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
         <div class="mono" style="font-weight:700; font-size:0.85rem;">➕ СОЗДАТЬ УЧЕТНУЮ ЗАПИСЬ УЧЕНИКА</div>
         <input type="text" id="adm-new-user-name" class="form-input" placeholder="Логин (например: ivan)">
@@ -420,7 +441,7 @@
         <button class="btn-solid mono" onclick="createUserAdmin()">СОЗДАТЬ ПОЛЬЗОВАТЕЛЯ</button>
       </div>
 
-      <!-- ЗАГРУЗКА ФАЙЛОВ / МАТЕРИАЛОВ В БАЗУ ДАННЫХ -->
+      <!-- ЗАГРУЗКА ФАЙЛОВ В БАЗУ ДАННЫХ -->
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
         <div class="mono" style="font-weight:700; font-size:0.85rem;">📁 ЗАГРУЗКА ФАЙЛОВ В БАЗУ ДАННЫХ (БАЗА ЗНАНИЙ)</div>
         <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">Загрузить документ (PDF / TXT / DOCX) для обучения ИИ:</label>
@@ -449,7 +470,7 @@
         <button class="btn-solid mono" onclick="addHwAdmin()">ОПУБЛИКОВАТЬ ДЗ</button>
       </div>
 
-      <!-- СБРОС УСТРОЙСТВ И СПИСОК УЧЕНИКОВ -->
+      <!-- СБРОС УСТРОЙСТВ -->
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
         <div class="mono" style="font-weight:700; font-size:0.85rem;">👥 СБРОС УСТРОЙСТВ ОДНОКЛАССНИКОВ</div>
         <div id="adm-users-list"></div>
@@ -470,7 +491,7 @@
   </div>
 </div>
 
-<!-- БОКОВАЯ ШТОРКА (ИСТОРИЯ ЧАТОВ) -->
+<!-- БОКОВАЯ ШТОРКА -->
 <div class="chat-drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
 <div class="chat-drawer" id="chat-drawer">
   <div class="drawer-header">
@@ -502,6 +523,38 @@
   if (!deviceToken) {
     deviceToken = crypto.randomUUID();
     localStorage.setItem('school_dev_token', deviceToken);
+  }
+
+  // ФУНКЦИЯ РЕНДЕРИНГА MARKDOWN И МАТЕМАТИКИ KATEX
+  function renderFormattedContent(container, rawText) {
+    if (!rawText) {
+      container.innerHTML = '';
+      return;
+    }
+    try {
+      // 1. Рендерим заголовки, списки, жирный текст через Marked
+      if (typeof marked !== 'undefined') {
+        marked.setOptions({ breaks: true, gfm: true });
+        container.innerHTML = marked.parse(rawText);
+      } else {
+        container.innerText = rawText;
+      }
+
+      // 2. Превращаем $$ формулы $$ и $ формулы $ в настоящие дроби через KaTeX
+      if (window.renderMathInElement) {
+        renderMathInElement(container, {
+          delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false},
+            {left: '\\(', right: '\\)', display: false},
+            {left: '\\[', right: '\\]', display: true}
+          ],
+          throwOnError: false
+        });
+      }
+    } catch(e) {
+      container.innerText = rawText;
+    }
   }
 
   // ТЕМА
@@ -745,7 +798,7 @@
     loadActiveChatMessages();
   }
 
-  // --- УМНЫЙ КОНВЕЙЕР ИЗОБРАЖЕНИЙ ЛЮБЫХ ФОРМАТОВ ---
+  // --- УМНЫЙ КОНВЕЙЕР ИЗОБРАЖЕНИЙ ---
   let attachments = { ai: null, group: null };
 
   async function handleFileSelected(e, scope) {
@@ -759,8 +812,6 @@
       const mime = file.type.toLowerCase();
       const fileSizeMB = file.size / (1024 * 1024);
 
-      // 1. КОГДА СЖАТИЕ НЕ НУЖНО:
-      // Скриншоты PNG/WEBP до 2.5 МБ, фото до 2 МБ, GIF и SVG
       const isCleanFormat = mime.includes('png') || mime.includes('webp') || ext === 'png' || ext === 'webp';
       const isSmall = fileSizeMB <= 2.5;
       const isSpecial = mime.includes('gif') || mime.includes('svg') || ext === 'gif' || ext === 'svg';
@@ -768,19 +819,13 @@
       if ((isCleanFormat && isSmall) || isSpecial || (fileSizeMB <= 1.8)) {
         const reader = new FileReader();
         reader.onload = function(evt) {
-          attachments[scope] = {
-            name: file.name,
-            data: evt.target.result,
-            isImage: true
-          };
+          attachments[scope] = { name: file.name, data: evt.target.result, isImage: true };
           showFilePreview(scope, file.name, evt.target.result, true);
         };
         reader.readAsDataURL(file);
         return;
       }
 
-      // 2. КОГДА СЖАТИЕ/КОНВЕРТАЦИЯ ДЕЙСТВИТЕЛЬНО НУЖНЫ:
-      // Тяжелые снимки с камеры (>2.5 МБ) и экзотические форматы
       try {
         const reader = new FileReader();
         reader.onload = function(evt) {
@@ -810,24 +855,15 @@
             }
 
             ctx.drawImage(img, 0, 0, w, h);
-
             const outputMime = isPng ? 'image/png' : 'image/jpeg';
             const compressedBase64 = canvas.toDataURL(outputMime, 0.82);
 
-            attachments[scope] = {
-              name: file.name,
-              data: compressedBase64,
-              isImage: true
-            };
+            attachments[scope] = { name: file.name, data: compressedBase64, isImage: true };
             showFilePreview(scope, file.name, compressedBase64, true);
           };
 
           img.onerror = function() {
-            attachments[scope] = {
-              name: file.name,
-              data: evt.target.result,
-              isImage: true
-            };
+            attachments[scope] = { name: file.name, data: evt.target.result, isImage: true };
             showFilePreview(scope, file.name, evt.target.result, true);
           };
 
@@ -839,14 +875,9 @@
       }
 
     } else {
-      // 3. ДОКУМЕНТЫ (PDF, TXT)
       const reader = new FileReader();
       reader.onload = function(evt) {
-        attachments[scope] = {
-          name: file.name,
-          data: evt.target.result,
-          isImage: false
-        };
+        attachments[scope] = { name: file.name, data: evt.target.result, isImage: false };
         showFilePreview(scope, file.name, null, false);
       };
       reader.readAsDataURL(file);
@@ -895,7 +926,7 @@
           </div>
           <div class="msg-body">
             <div class="bubble-content">
-              Привет! Я настроен строго по программе 8 «Б». Могу решить задачу по фото или изучить конспект/файл. Чем помочь?
+              Привет! Я настроен строго по программе 8 «Б». Могу решить задачу по фото или объяснить любую формулу. Чем помочь?
             </div>
           </div>
         </div>
@@ -952,7 +983,7 @@
     setAiLoadingState(false);
   }
 
-  // --- ПОТОКОВЫЙ ВЫЗОВ ИИ ---
+  // --- ПОТОКОВЫЙ ВЫЗОВ ИИ С ФОРМАТИРОВАНИЕМ ДРОБЕЙ И ТЕГОВ ---
   async function sendAiMessage() {
     const input = document.getElementById('ai-input');
     const txt = input.value.trim();
@@ -1048,7 +1079,8 @@
                     isFirstChunk = false;
                   }
                   fullResponse += p.content;
-                  bubbleContent.innerText = fullResponse;
+                  // Рендерим Markdown и дроби на лету
+                  renderFormattedContent(bubbleContent, fullResponse);
                   box.scrollTop = box.scrollHeight;
                 } else if (p.error) {
                   bubbleContent.innerHTML = `<span style="color:#ef4444;">❌ ${escapeHtml(p.error)}</span>`;
@@ -1146,10 +1178,18 @@
       ${avHtml}
       <div class="msg-body">
         ${role === 'other' ? `<div class="msg-meta mono"><b>${escapeHtml(name)}</b></div>` : ''}
-        <div class="bubble-content">${attHtml}${escapeHtml(text || '')}</div>
+        <div class="bubble-content">${attHtml}<div class="text-inner"></div></div>
       </div>
     `;
     box.appendChild(wrap);
+    
+    const textNode = wrap.querySelector('.text-inner');
+    if (role === 'bot') {
+      renderFormattedContent(textNode, text || '');
+    } else {
+      textNode.innerText = text || '';
+    }
+
     box.scrollTop = box.scrollHeight;
   }
 
@@ -1188,7 +1228,7 @@
     quickAi(`Помоги разобрать задание по предмету ${s}: ${t}`);
   }
 
-  // --- АДМИНКА (СТРОГО ДЛЯ DUDO) ---
+  // --- АДМИНКА ---
   async function loadAdminData() {
     if (!currentUser || currentUser.name.toLowerCase() !== 'dudo') return;
     const res = await fetch('/api/admin/data', {
@@ -1209,11 +1249,9 @@
     document.getElementById('adm-ai-model').value = d.ai_model_id || '';
     document.getElementById('adm-ai-key').value = d.ai_api_key || '';
 
-    // Селектор учеников для просмотра истории
     const uSelect = document.getElementById('adm-user-select');
     uSelect.innerHTML = '<option value="">-- Выберите ученика --</option>';
 
-    // Список учеников и статус привязки
     const uList = document.getElementById('adm-users-list');
     uList.innerHTML = '';
     (d.users || []).forEach(u => {
@@ -1226,7 +1264,6 @@
       `;
     });
 
-    // Список загруженных файлов базы знаний
     const fList = document.getElementById('adm-kb-files-list');
     if (fList) {
       fList.innerHTML = '';
@@ -1245,7 +1282,6 @@
     }
   }
 
-  // СОЗДАНИЕ НОВОГО ПОЛЬЗОВАТЕЛЯ
   async function createUserAdmin() {
     const u = document.getElementById('adm-new-user-name').value.trim();
     const p = document.getElementById('adm-new-user-pass').value.trim();
@@ -1267,7 +1303,6 @@
     }
   }
 
-  // ЗАГРУЗКА ФАЙЛА В БАЗУ ЗНАНИЙ
   async function uploadKnowledgeFileAdmin() {
     const input = document.getElementById('adm-kb-file-input');
     const file = input.files[0];
@@ -1296,7 +1331,6 @@
     reader.readAsDataURL(file);
   }
 
-  // УДАЛЕНИЕ ФАЙЛА ИЗ БАЗЫ ЗНАНИЙ
   async function deleteKnowledgeFile(fileId) {
     if (!confirm("Удалить этот файл из базы данных?")) return;
     await fetch('/api/admin/delete_knowledge', {
@@ -1362,7 +1396,7 @@
           </div>
           ${m.attachment_name ? `<div class="mono" style="font-size:0.7rem; color:var(--accent);">📁 ${escapeHtml(m.attachment_name)}</div>` : ''}
           ${m.attachment_data && m.is_image ? `<img src="${m.attachment_data}" style="max-width:120px; border-radius:4px; margin:4px 0; display:block;">` : ''}
-          <div style="white-space:pre-wrap;">${escapeHtml(m.message || '')}</div>
+          <div class="adm-msg-text" style="white-space:pre-wrap;">${escapeHtml(m.message || '')}</div>
         </div>
       `;
     });
