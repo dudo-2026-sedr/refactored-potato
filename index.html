@@ -194,7 +194,7 @@
     }
     .btn-send svg { width: 14px; height: 14px; stroke: var(--accent-inv); }
 
-    /* БОКОВАЯ ШТОРКА (CHATGPT / GEMINI DRAWER) */
+    /* БОКОВАЯ ШТОРКА */
     .chat-drawer-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(8px);
       z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
@@ -340,7 +340,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
         </button>
         <input type="text" class="text-input" id="ai-input" placeholder="Спроси или скинь фото задачи..." onkeydown="if(event.key==='Enter') handleAiButton()">
-        <!-- МИНИМАЛИСТИЧНАЯ КНОПКА ОТПРАВКИ / ОСТАНОВКИ -->
+        <!-- КНОПКА ОТПРАВКИ / ОСТАНОВКИ -->
         <button class="btn-send" id="ai-send-btn" onclick="handleAiButton()" title="Отправить">
           <svg id="ai-btn-icon-send" viewBox="0 0 24 24" fill="none" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
           <svg id="ai-btn-icon-stop" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
@@ -412,6 +412,23 @@
         <div id="adm-chat-history-box" style="display:none; max-height:280px; overflow-y:auto; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:8px;"></div>
       </div>
 
+      <!-- СОЗДАНИЕ НОВЫХ УЧЕНИКОВ / ПОЛЬЗОВАТЕЛЕЙ -->
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
+        <div class="mono" style="font-weight:700; font-size:0.85rem;">➕ СОЗДАТЬ УЧЕТНУЮ ЗАПИСЬ УЧЕНИКА</div>
+        <input type="text" id="adm-new-user-name" class="form-input" placeholder="Логин (например: ivan)">
+        <input type="password" id="adm-new-user-pass" class="form-input" placeholder="Пароль для первого входа">
+        <button class="btn-solid mono" onclick="createUserAdmin()">СОЗДАТЬ ПОЛЬЗОВАТЕЛЯ</button>
+      </div>
+
+      <!-- ЗАГРУЗКА ФАЙЛОВ / МАТЕРИАЛОВ В БАЗУ ДАННЫХ -->
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
+        <div class="mono" style="font-weight:700; font-size:0.85rem;">📁 ЗАГРУЗКА ФАЙЛОВ В БАЗУ ДАННЫХ (БАЗА ЗНАНИЙ)</div>
+        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">Загрузить документ (PDF / TXT / DOCX) для обучения ИИ:</label>
+        <input type="file" id="adm-kb-file-input" class="form-input" accept=".pdf,.txt,.docx,.doc">
+        <button class="btn-solid mono" onclick="uploadKnowledgeFileAdmin()">ЗАГРУЗИТЬ В БАЗУ ДАННЫХ</button>
+        <div id="adm-kb-files-list" style="margin-top:6px; display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+
       <!-- ПОДКЛЮЧЕНИЕ ИИ -->
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
         <div class="mono" style="font-weight:700; font-size:0.85rem;">🤖 ПОДКЛЮЧЕНИЕ ИИ (OPENAI ФОРМАТ)</div>
@@ -432,7 +449,7 @@
         <button class="btn-solid mono" onclick="addHwAdmin()">ОПУБЛИКОВАТЬ ДЗ</button>
       </div>
 
-      <!-- СБРОС УСТРОЙСТВ -->
+      <!-- СБРОС УСТРОЙСТВ И СПИСОК УЧЕНИКОВ -->
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;">
         <div class="mono" style="font-weight:700; font-size:0.85rem;">👥 СБРОС УСТРОЙСТВ ОДНОКЛАССНИКОВ</div>
         <div id="adm-users-list"></div>
@@ -742,10 +759,8 @@
       const mime = file.type.toLowerCase();
       const fileSizeMB = file.size / (1024 * 1024);
 
-      // 1. КОГДА СЖАТИЕ НЕ НУЖНО (ПРОПУСКАЕМ НАПРЯМУЮ КАК ЕСТЬ):
-      // - Скриншоты PNG/WEBP до 2.5 МБ (чтобы не забить альфа-канал и не мылить текст формул)
-      // - Любые нормальные фото до 2 МБ
-      // - Анимированные GIF и векторные SVG
+      // 1. КОГДА СЖАТИЕ НЕ НУЖНО:
+      // Скриншоты PNG/WEBP до 2.5 МБ, фото до 2 МБ, GIF и SVG
       const isCleanFormat = mime.includes('png') || mime.includes('webp') || ext === 'png' || ext === 'webp';
       const isSmall = fileSizeMB <= 2.5;
       const isSpecial = mime.includes('gif') || mime.includes('svg') || ext === 'gif' || ext === 'svg';
@@ -765,8 +780,7 @@
       }
 
       // 2. КОГДА СЖАТИЕ/КОНВЕРТАЦИЯ ДЕЙСТВИТЕЛЬНО НУЖНЫ:
-      // - Тяжелые фото с камеры (5-20 МБ)
-      // - Нестандартные форматы (BMP, TIFF), которые OpenAI API не понимает напрямую
+      // Тяжелые снимки с камеры (>2.5 МБ) и экзотические форматы
       try {
         const reader = new FileReader();
         reader.onload = function(evt) {
@@ -899,7 +913,7 @@
     });
   }
 
-  // --- МИНИМАЛИСТИЧНЫЙ КОНТРОЛЬ КНОПКИ: СТАРТ / СТОП ---
+  // --- КОНТРОЛЬ КНОПКИ СТАРТ / СТОП ---
   let isAiGenerating = false;
   let aiAbortController = null;
 
@@ -1195,12 +1209,14 @@
     document.getElementById('adm-ai-model').value = d.ai_model_id || '';
     document.getElementById('adm-ai-key').value = d.ai_api_key || '';
 
+    // Селектор учеников для просмотра истории
     const uSelect = document.getElementById('adm-user-select');
     uSelect.innerHTML = '<option value="">-- Выберите ученика --</option>';
 
+    // Список учеников и статус привязки
     const uList = document.getElementById('adm-users-list');
     uList.innerHTML = '';
-    d.users.forEach(u => {
+    (d.users || []).forEach(u => {
       uSelect.innerHTML += `<option value="${escapeHtml(u.username)}">${escapeHtml(u.username)}</option>`;
       uList.innerHTML += `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--border); font-size:0.82rem;">
@@ -1209,6 +1225,86 @@
         </div>
       `;
     });
+
+    // Список загруженных файлов базы знаний
+    const fList = document.getElementById('adm-kb-files-list');
+    if (fList) {
+      fList.innerHTML = '';
+      if (d.knowledge_files && d.knowledge_files.length > 0) {
+        d.knowledge_files.forEach(f => {
+          fList.innerHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 8px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:0.78rem;">
+              <span class="mono">📄 ${escapeHtml(f.filename || f.name)}</span>
+              <button class="mono" style="background:transparent; border:none; color:#ef4444; cursor:pointer;" onclick="deleteKnowledgeFile(${f.id})">✕</button>
+            </div>
+          `;
+        });
+      } else {
+        fList.innerHTML = '<div class="mono" style="font-size:0.72rem; color:var(--text-dim);">Файлов пока нет</div>';
+      }
+    }
+  }
+
+  // СОЗДАНИЕ НОВОГО ПОЛЬЗОВАТЕЛЯ
+  async function createUserAdmin() {
+    const u = document.getElementById('adm-new-user-name').value.trim();
+    const p = document.getElementById('adm-new-user-pass').value.trim();
+    if (!u || !p) return alert("Введите логин и пароль!");
+
+    const res = await fetch('/api/admin/create_user', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ token: currentUser.token, username: u, password: p })
+    });
+    const d = await res.json();
+    if (d.success) {
+      alert("Пользователь успешно создан!");
+      document.getElementById('adm-new-user-name').value = '';
+      document.getElementById('adm-new-user-pass').value = '';
+      loadAdminData();
+    } else {
+      alert(d.error || "Ошибка при создании пользователя");
+    }
+  }
+
+  // ЗАГРУЗКА ФАЙЛА В БАЗУ ЗНАНИЙ
+  async function uploadKnowledgeFileAdmin() {
+    const input = document.getElementById('adm-kb-file-input');
+    const file = input.files[0];
+    if (!file) return alert("Выберите файл (PDF / TXT / DOCX)!");
+
+    const reader = new FileReader();
+    reader.onload = async function(evt) {
+      const res = await fetch('/api/admin/upload_knowledge', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          token: currentUser.token,
+          filename: file.name,
+          file_data: evt.target.result
+        })
+      });
+      const d = await res.json();
+      if (d.success) {
+        alert("Файл сохранён в базу данных!");
+        input.value = '';
+        loadAdminData();
+      } else {
+        alert(d.error || "Ошибка сохранения файла");
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // УДАЛЕНИЕ ФАЙЛА ИЗ БАЗЫ ЗНАНИЙ
+  async function deleteKnowledgeFile(fileId) {
+    if (!confirm("Удалить этот файл из базы данных?")) return;
+    await fetch('/api/admin/delete_knowledge', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ token: currentUser.token, file_id: fileId })
+    });
+    loadAdminData();
   }
 
   async function loadAdminUserSessions() {
