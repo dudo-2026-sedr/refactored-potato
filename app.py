@@ -1,9 +1,10 @@
 import os
 import io
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from flask import Flask, request, jsonify, render_template_string
 import pypdf
+from openai import OpenAI
 
 app = Flask(__name__, template_folder=".")
 app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32 МБ макс. размер файлов
@@ -66,20 +67,18 @@ def init_db():
                 is_image BOOLEAN DEFAULT FALSE
             );
         """)
-        # Создаем dudo с правами админа
         c.execute("""
             INSERT INTO users (username, password, role) 
             VALUES ('dudo', 'dudo_2026', 'admin')
             ON CONFLICT (username) DO NOTHING;
 
-            INSERT INTO users (username, password, role) 
-            VALUES ('артем', '1234', 'student')
-            ON CONFLICT (username) DO NOTHING;
-
             INSERT INTO settings (key, value) VALUES 
             ('banner', 'Добро пожаловать в закрытую платформу 8 «Б»!'),
-            ('system_prompt', 'Ты личный наставник 8 «Б» класса. Помогай решать задачи пошагово, объясняй формулы, не давай прямое списывание.'),
-            ('facts', 'Учительница по физике снижает балл за отсутствие единиц СИ в Дано.')
+            ('system_prompt', 'Ты личный наставник 8 «Б» класса. Помогай решать задачи пошагово, объясняй формулы и логику, не давай прямое списывание.'),
+            ('facts', 'По физике всегда обязательно писать единицы СИ в графе Дано.'),
+            ('ai_base_url', 'https://api.openai.com/v1'),
+            ('ai_model_id', 'gpt-4o-mini'),
+            ('ai_api_key', '')
             ON CONFLICT (key) DO NOTHING;
         """)
     else:
@@ -93,29 +92,21 @@ def init_db():
                 avatar TEXT,
                 auth_token TEXT
             );
-        """)
-        c.execute("""
             CREATE TABLE IF NOT EXISTS homework (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 subject TEXT NOT NULL,
                 task TEXT NOT NULL,
                 deadline TEXT NOT NULL
             );
-        """)
-        c.execute("""
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
                 value TEXT
             );
-        """)
-        c.execute("""
             CREATE TABLE IF NOT EXISTS documents (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 filename TEXT NOT NULL,
                 content TEXT NOT NULL
             );
-        """)
-        c.execute("""
             CREATE TABLE IF NOT EXISTS group_chat (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 sender TEXT NOT NULL,
@@ -128,19 +119,23 @@ def init_db():
             );
         """)
         c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('dudo', 'dudo_2026', 'admin');")
-        c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('артем', '1234', 'student');")
         c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('banner', 'Добро пожаловать в закрытую платформу 8 «Б»!');")
-        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('system_prompt', 'Ты наставник 8 «Б». Помогай пошагово.');")
+        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('system_prompt', 'Ты личный наставник 8 «Б» класса. Помогай решать задачи пошагово.');")
         c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('facts', 'По физике пишем единицы СИ.');")
+        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_base_url', 'https://api.openai.com/v1');")
+        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_model_id', 'gpt-4o-mini');")
+        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_api_key', '');")
 
     conn.commit()
     conn.close()
 
 init_db()
 
-def get_time_data():
+# ТОЧНОЕ МОСКОВСКОЕ ВРЕМЯ (МСК, UTC+3)
+def get_msk_time():
+    msk_tz = timezone(timedelta(hours=3))
+    now = datetime.now(msk_tz)
     days = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"]
-    now = datetime.now()
     return {
         "day": days[now.weekday()],
         "date": now.strftime("%d.%m.%Y"),
@@ -154,9 +149,8 @@ def get_setting(key, default=""):
     c.execute(f"SELECT value FROM settings WHERE key={ph}", (key,))
     res = c.fetchone()
     conn.close()
-    return res[0] if res else default
+    return res[0] if (res and res[0] is not None) else default
 
-# ПРОВЕРКА ПРАВ АДМИНИСТРАТОРА (СТРОГО ТОЛЬКО ДЛЯ DUDO)
 def verify_admin(token):
     if not token:
         return False
@@ -166,11 +160,9 @@ def verify_admin(token):
     c.execute(f"SELECT role, username FROM users WHERE auth_token={ph}", (token,))
     row = c.fetchone()
     conn.close()
-    if row and row[0] == 'admin' and row[1] == 'dudo':
-        return True
-    return False
+    return bool(row and row[0] == 'admin' and row[1] == 'dudo')
 
-# --- МАРШРУТЫ ---
+# --- РОУТЫ ---
 
 @app.route("/")
 def index():
@@ -193,14 +185,12 @@ def login():
 
     if not user:
         conn.close()
-        return jsonify({"success": False, "error": "Неверное имя или пароль."}), 401
+        return jsonify({"success": False, "error": "Неверный логин или пароль."}), 401
 
     user_id, uname, role, bound_token, avatar = user[0], user[1], user[2], user[3], user[4]
-
-    # Генерация сессионного auth_token
     session_token = uuid.uuid4().hex
 
-    # Device Lock: для dudo ограничений нет. Для учеников блокирует чужие устройства.
+    # Device Lock (dudo входит без ограничений)
     if role != 'admin':
         if bound_token is None:
             c.execute(f"UPDATE users SET device_token={ph}, auth_token={ph} WHERE id={ph}", (device_token, session_token, user_id))
@@ -237,7 +227,6 @@ def update_profile():
     if not new_name:
         return jsonify({"success": False, "error": "Имя не может быть пустым"}), 400
 
-    # Защита: нельзя присвоить себе ник dudo
     if new_name == 'dudo' and username != 'dudo':
         return jsonify({"success": False, "error": "Имя dudo зарезервировано администратором"}), 403
 
@@ -258,46 +247,98 @@ def dashboard():
     conn.close()
 
     return jsonify({
-        "time": get_time_data(),
+        "time": get_msk_time(),
         "banner": get_setting("banner"),
         "homework": [{"id": h[0], "subject": h[1], "task": h[2], "deadline": h[3]} for h in hw]
     })
 
+# --- ОСНОВНОЙ ВЫЗОВ ИИ (OPENAI COMPATIBLE) ---
 @app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.json or {}
     user_msg = data.get("message", "")
     username = data.get("username", "Ученик")
-    attachment_name = data.get("attachment_name")
-    t = get_time_data()
+    att_data = data.get("attachment_data")
+    is_img = data.get("is_image", False)
+    t = get_msk_time()
 
+    # 1. Получаем базу заданий и конспектов
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT subject, task FROM homework")
-    hw = c.fetchall()
+    c.execute("SELECT subject, task, deadline FROM homework")
+    hw_rows = c.fetchall()
     c.execute("SELECT filename, content FROM documents")
-    docs = c.fetchall()
+    doc_rows = c.fetchall()
     conn.close()
 
-    hw_text = "; ".join([f"{s[0]}: {s[1]}" for s in hw])
-    docs_text = "\n".join([f"[{d[0]}]: {d[1][:500]}" for d in docs])
+    if hw_rows:
+        hw_list_str = "\n".join([f"- {h[0]}: {h[1]} (Сдать до: {h[2]})" for h in hw_rows])
+    else:
+        hw_list_str = "Заданий пока нет."
 
-    system_prompt = f"""
-    {get_setting('system_prompt')}
-    Сегодня: {t['day']}, {t['date']}, {t['time']}.
-    Ученик: {username}.
-    Актуальные ДЗ: {hw_text}.
-    Инсайды: {get_setting('facts')}.
-    Конспекты: {docs_text}.
-    """
+    docs_str = "\n".join([f"[{d[0]}]: {d[1][:500]}" for d in doc_rows])
 
-    reply = f"Привет, {username.capitalize()}! Сейчас {t['day']} ({t['time']}). "
-    if attachment_name:
-        reply += f"Я изучил прикрепленный файл «{attachment_name}». "
-    reply += f"Давай разберем задачу по шагам. Что тебе известно по условию?"
+    # 2. Формируем подробный системный контекст
+    system_instruction = f"""
+{get_setting('system_prompt')}
 
-    return jsonify({"reply": reply})
+РЕАЛЬНЫЕ ДАННЫЕ В РЕАЛЬНОМ ВРЕМЕНИ:
+- Точное текущее время (МСК, Москва): {t['day']}, {t['date']}, время: {t['time']}.
+- Имя ученика: {username}.
+- Заметки и правила учителей: {get_setting('facts')}.
 
+АКТУАЛЬНАЯ БАЗА ДОМАШНИХ ЗАДАНИЙ 8 «Б» КЛАССА:
+{hw_list_str}
+
+МАТЕРИАЛЫ И КОНСПЕКТЫ ИЗ УЧЕБНИКОВ:
+{docs_str}
+
+ИНСТРУКЦИИ ПО ОТВЕТАМ:
+1. Если ученик спрашивает «какая домашка?», «что задали?», «что по физике/алгебре?» — бери информацию ТОЛЬКО из списка актуальной базы выше. Учитывай сегодняшний день недели ({t['day']}) и дедлайны!
+2. Не придумывай домашку от себя, которой нет в базе. Если задания по предмету нет — так и скажи: «По этому предмету задания в базе пока нет».
+3. Отвечай дружелюбно, понятно для ученика 8 класса, помогай разбирать задачи пошагово.
+"""
+
+    # 3. Настройки подключения к ИИ
+    base_url = os.environ.get("AI_BASE_URL") or get_setting("ai_base_url", "https://api.openai.com/v1")
+    api_key = os.environ.get("AI_API_KEY") or get_setting("ai_api_key", "")
+    model_id = os.environ.get("AI_MODEL_ID") or get_setting("ai_model_id", "gpt-4o-mini")
+
+    if not api_key:
+        return jsonify({
+            "reply": "⚠️ API-ключ для нейросети еще не настроен! Администратор (dudo) должен указать Base URL, Model ID и API Key во вкладке «АДМИНКА»."
+        })
+
+    try:
+        client = OpenAI(base_url=base_url.rstrip("/"), api_key=api_key)
+
+        # Формируем сообщение пользователя (с поддержкой Vision для фото задач)
+        if att_data and is_img:
+            user_content = [
+                {"type": "text", "text": user_msg or "Помоги с этой задачей на фото."},
+                {"type": "image_url", "image_url": {"url": att_data}}
+            ]
+        else:
+            user_content = user_msg
+
+        response = client.chat.completions.create(
+            model=model_id,
+            messages=[
+                {"role": "system", "content": system_instruction},
+                {"role": "user", "content": user_content}
+            ],
+            temperature=0.7,
+            max_tokens=1500
+        )
+        bot_reply = response.choices[0].message.content
+        return jsonify({"reply": bot_reply})
+
+    except Exception as e:
+        return jsonify({
+            "reply": f"❌ Ошибка вызова нейросети: {str(e)}\n\nПроверьте правильность Base URL, API Key и Model ID в панели администратора."
+        })
+
+# --- ГРУППОВОЙ ЧАТ ---
 @app.route("/api/group/messages", methods=["GET"])
 def group_messages():
     conn = get_db()
@@ -325,7 +366,7 @@ def group_send():
     att_name = data.get("attachment_name")
     att_data = data.get("attachment_data")
     is_img = bool(data.get("is_image", False))
-    time_str = get_time_data()["time"]
+    time_str = get_msk_time()["time"]
 
     conn = get_db()
     c = conn.cursor()
@@ -339,8 +380,7 @@ def group_send():
 
     return jsonify({"success": True, "time": time_str})
 
-# --- СТРОГО ЗАЩИЩЕННЫЕ МАРШРУТЫ АДМИНА (ТОЛЬКО DUDO) ---
-
+# --- АДМИНКА (СТРОГО ДЛЯ DUDO) ---
 @app.route("/api/admin/data", methods=["POST"])
 def admin_data():
     token = (request.json or {}).get("token")
@@ -360,7 +400,10 @@ def admin_data():
         "documents": [{"id": d[0], "filename": d[1]} for d in docs],
         "banner": get_setting("banner"),
         "system_prompt": get_setting("system_prompt"),
-        "facts": get_setting("facts")
+        "facts": get_setting("facts"),
+        "ai_base_url": get_setting("ai_base_url", "https://api.openai.com/v1"),
+        "ai_model_id": get_setting("ai_model_id", "gpt-4o-mini"),
+        "ai_api_key": get_setting("ai_api_key", "")
     })
 
 @app.route("/api/admin/reset_device", methods=["POST"])
@@ -393,67 +436,29 @@ def save_hw():
     conn.close()
     return jsonify({"success": True})
 
-@app.route("/api/admin/delete_hw", methods=["POST"])
-def delete_hw():
-    data = request.json or {}
-    if not verify_admin(data.get("token")):
-        return jsonify({"error": "Доступ запрещен"}), 403
-
-    hid = data.get("id")
-    conn = get_db()
-    c = conn.cursor()
-    ph = "%s" if IS_POSTGRES else "?"
-    c.execute(f"DELETE FROM homework WHERE id={ph}", (hid,))
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True})
-
 @app.route("/api/admin/save_settings", methods=["POST"])
 def save_settings():
     data = request.json or {}
     if not verify_admin(data.get("token")):
         return jsonify({"error": "Доступ запрещен"}), 403
 
-    banner = data.get("banner", "")
-    prompt = data.get("system_prompt", "")
-    facts = data.get("facts", "")
+    settings_map = {
+        'banner': data.get("banner", ""),
+        'system_prompt': data.get("system_prompt", ""),
+        'facts': data.get("facts", ""),
+        'ai_base_url': data.get("ai_base_url", "https://api.openai.com/v1"),
+        'ai_model_id': data.get("ai_model_id", "gpt-4o-mini"),
+        'ai_api_key': data.get("ai_api_key", "")
+    }
 
     conn = get_db()
     c = conn.cursor()
-    if IS_POSTGRES:
-        c.execute("INSERT INTO settings (key, value) VALUES ('banner', %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (banner,))
-        c.execute("INSERT INTO settings (key, value) VALUES ('system_prompt', %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (prompt,))
-        c.execute("INSERT INTO settings (key, value) VALUES ('facts', %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (facts,))
-    else:
-        c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('banner', ?)", (banner,))
-        c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('system_prompt', ?)", (prompt,))
-        c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('facts', ?)", (facts,))
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True})
+    for k, v in settings_map.items():
+        if IS_POSTGRES:
+            c.execute("INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", (k, v))
+        else:
+            c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (k, v))
 
-@app.route("/api/admin/upload_doc", methods=["POST"])
-def upload_doc():
-    token = request.form.get("token")
-    if not verify_admin(token):
-        return jsonify({"error": "Доступ запрещен"}), 403
-
-    if 'file' not in request.files:
-        return jsonify({"success": False}), 400
-    file = request.files['file']
-    filename = file.filename
-    content = ""
-    if filename.endswith(".pdf"):
-        reader = pypdf.PdfReader(io.BytesIO(file.read()))
-        for p in reader.pages:
-            content += (p.extract_text() or "") + "\n"
-    else:
-        content = file.read().decode("utf-8", errors="ignore")
-
-    conn = get_db()
-    c = conn.cursor()
-    ph = "%s" if IS_POSTGRES else "?"
-    c.execute(f"INSERT INTO documents (filename, content) VALUES ({ph}, {ph})", (filename, content[:25000]))
     conn.commit()
     conn.close()
     return jsonify({"success": True})
