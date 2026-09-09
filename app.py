@@ -9,7 +9,7 @@ import pypdf
 from openai import OpenAI
 
 app = Flask(__name__, template_folder=".")
-app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32 МБ макс. размер файлов
+app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 IS_POSTGRES = bool(DATABASE_URL)
@@ -200,22 +200,16 @@ def verify_admin(token):
     conn.close()
     return bool(row and row[0] == 'admin' and row[1] == 'dudo')
 
-# Функция извлечения текста из прикрепленного файла
 def extract_text_from_attachment(att_data, att_name):
     if not att_data or not att_name:
         return ""
     try:
-        if "," in att_data:
-            base64_str = att_data.split(",", 1)[1]
-        else:
-            base64_str = att_data
+        base64_str = att_data.split(",", 1)[1] if "," in att_data else att_data
         raw_bytes = base64.b64decode(base64_str)
 
         if att_name.lower().endswith(".pdf"):
             reader = pypdf.PdfReader(io.BytesIO(raw_bytes))
-            text = ""
-            for page in reader.pages:
-                text += (page.extract_text() or "") + "\n"
+            text = "".join([(page.extract_text() or "") + "\n" for page in reader.pages])
             return text.strip()
         else:
             return raw_bytes.decode("utf-8", errors="ignore").strip()
@@ -313,7 +307,7 @@ def dashboard():
         "homework": [{"id": h[0], "subject": h[1], "task": h[2], "deadline": h[3]} for h in hw]
     })
 
-# --- УПРАВЛЕНИЕ СЕССИЯМИ ЧАТОВ (КАК В CHATGPT/GEMINI) ---
+# --- СЕССИИ ЧАТОВ ---
 
 @app.route("/api/chats/list", methods=["POST"])
 def list_chats():
@@ -418,7 +412,8 @@ def get_chat_history():
         "time": r[5]
     } for r in rows])
 
-# --- ПОТОКОВЫЙ ВЫЗОВ ИИ (С ПОДДЕРЖКОЙ ФОТО И ФАЙЛОВ) ---
+# --- ВЫЗОВ ИИ (СТРИМИНГ БЕЗ БУФЕРИЗАЦИИ) ---
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.json or {}
@@ -434,14 +429,12 @@ def chat():
     c = conn.cursor()
     ph = "%s" if IS_POSTGRES else "?"
 
-    # Если сессии нет, создаем
     if not session_id:
         session_id = uuid.uuid4().hex[:12]
         c.execute(f"INSERT INTO chat_sessions (session_id, username, title) VALUES ({ph}, {ph}, 'Новый чат')", 
                   (session_id, username))
         conn.commit()
 
-    # Проверяем, нужно ли дать автоматическое название чату
     c.execute(f"SELECT title FROM chat_sessions WHERE session_id={ph}", (session_id,))
     s_row = c.fetchone()
     if s_row and s_row[0] == "Новый чат":
@@ -449,14 +442,13 @@ def chat():
         c.execute(f"UPDATE chat_sessions SET title={ph} WHERE session_id={ph}", (auto_title, session_id))
         conn.commit()
 
-    # Сохраняем сообщение пользователя в БД
+    # Сохраняем запрос пользователя
     c.execute(f"""
         INSERT INTO ai_chat_history (session_id, username, role, message, attachment_name, attachment_data, is_image, time_str)
         VALUES ({ph}, {ph}, 'user', {ph}, {ph}, {ph}, {ph}, {ph})
     """, (session_id, username, user_msg, att_name, att_data, is_img, t["time"]))
     conn.commit()
 
-    # Получаем актуальные ДЗ и документы
     c.execute("SELECT subject, task, deadline FROM homework")
     hw_rows = c.fetchall()
     c.execute("SELECT filename, content FROM documents")
@@ -470,9 +462,9 @@ def chat():
 {get_setting('system_prompt')}
 
 РЕАЛЬНЫЕ ДАННЫЕ В РЕАЛЬНОМ ВРЕМЕНИ:
-- Точное текущее время (МСК, Москва): {t['day']}, {t['date']}, время: {t['time']}.
+- Точное время МСК (Москва): {t['day']}, {t['date']}, {t['time']}.
 - Имя ученика: {username}.
-- Заметки и подсказки об учителях: {get_setting('facts')}.
+- Заметки об учителях: {get_setting('facts')}.
 
 АКТУАЛЬНАЯ БАЗА ДОМАШНИХ ЗАДАНИЙ 8 «Б» КЛАССА:
 {hw_list_str}
@@ -481,9 +473,9 @@ def chat():
 {docs_str}
 
 ИНСТРУКЦИИ:
-1. Если ученик спрашивает «какая домашка?», «что задали?» — бери информацию ТОЛЬКО из базы выше. Учитывай день недели ({t['day']}) и дедлайны.
-2. Не давай сразу тупой готовый ответ, объясняй формулы и ход мыслей пошагово.
-3. Если к сообщению прикреплен текст файла — внимательно изучи его и отвечай строго по его содержимому.
+1. Если ученик спрашивает «что задали?» или «какая домашка?», отвечай СТРОГО по базе выше, учитывая сегодняшний день недели ({t['day']}).
+2. Помогай решать задачи пошагово, объясняй суть, не давай тупо списывать готовый ответ.
+3. Если прикреплен текст документа — внимательно изучи его и строй ответ на его основе.
 """
 
     base_url = os.environ.get("AI_BASE_URL") or get_setting("ai_base_url", "https://api.openai.com/v1")
@@ -491,6 +483,9 @@ def chat():
     model_id = os.environ.get("AI_MODEL_ID") or get_setting("ai_model_id", "gpt-4o-mini")
 
     def event_stream():
+        # Мгновенный пинг для принудительного сброса буфера прокси (Cloudflare/Railway)
+        yield ": ping\n\n"
+
         if not api_key:
             err = "⚠️ API-ключ не настроен! Администратор (dudo) должен указать Base URL, Model ID и API Key во вкладке «АДМИНКА»."
             yield f"data: {json.dumps({'error': err})}\n\n"
@@ -499,19 +494,20 @@ def chat():
 
         full_bot_reply = ""
         try:
-            client = OpenAI(base_url=base_url.rstrip("/"), api_key=api_key)
+            client = OpenAI(base_url=base_url.rstrip("/"), api_key=api_key, timeout=45.0)
 
-            # Обработка фото (Vision) или файлов (PDF/TXT)
             if att_data and is_img:
-                # Для изображений: передаем URL с base64 (сжатым на фронте)
+                prompt_text = user_msg if user_msg else "Пожалуйста, посмотри на прикрепленное фото задачи и помоги решить пошагово."
                 user_content = [
-                    {"type": "text", "text": user_msg or "Пожалуйста, посмотри на это фото и помоги с решением задачи."},
+                    {"type": "text", "text": prompt_text},
                     {"type": "image_url", "image_url": {"url": att_data}}
                 ]
             elif att_data and not is_img:
-                # Для документов: извлекаем текст и передаем модели
                 file_text = extract_text_from_attachment(att_data, att_name)
-                user_content = f"{user_msg}\n\n[СОДЕРЖИМОЕ ПРИКРЕПЛЕННОГО ФАЙЛА «{att_name}»]:\n{file_text}\n[КОНЕЦ ФАЙЛА]\n"
+                if not file_text:
+                    file_text = "[Внимание: не удалось извлечь текст. Если это скан страницы, прикрепите его как фото.]"
+                prompt_text = user_msg if user_msg else "Изучи прикрепленный файл и помоги мне с ним."
+                user_content = f"{prompt_text}\n\n--- СОДЕРЖИМОЕ ПРИКРЕПЛЕННОГО ФАЙЛА ({att_name}) ---\n{file_text}\n--- КОНЕЦ ФАЙЛА ---"
             else:
                 user_content = user_msg
 
@@ -533,7 +529,6 @@ def chat():
                         full_bot_reply += delta
                         yield f"data: {json.dumps({'content': delta, 'session_id': session_id})}\n\n"
 
-            # Сохраняем ответ ИИ в историю
             if full_bot_reply:
                 s_conn = get_db()
                 sc = s_conn.cursor()
@@ -550,9 +545,14 @@ def chat():
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
             yield "data: [DONE]\n\n"
 
-    return Response(stream_with_context(event_stream()), mimetype="text/event-stream")
+    response = Response(stream_with_context(event_stream()), mimetype="text/event-stream")
+    response.headers["Cache-Control"] = "no-cache, no-transform"
+    response.headers["X-Accel-Buffering"] = "no"
+    response.headers["Connection"] = "keep-alive"
+    return response
 
 # --- ГРУППОВОЙ ЧАТ ---
+
 @app.route("/api/group/messages", methods=["GET"])
 def group_messages():
     conn = get_db()
@@ -589,7 +589,8 @@ def group_send():
 
     return jsonify({"success": True, "time": time_str})
 
-# --- АДМИНКА (СТРОГО ДЛЯ DUDO) ---
+# --- АДМИНКА (ТОЛЬКО ДЛЯ DUDO) ---
+
 @app.route("/api/admin/data", methods=["POST"])
 def admin_data():
     token = (request.json or {}).get("token")
