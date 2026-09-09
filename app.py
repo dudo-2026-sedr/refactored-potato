@@ -1,8 +1,9 @@
 import os
 import io
 import uuid
+import json
 from datetime import datetime, timezone, timedelta
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify, render_template_string, Response, stream_with_context
 import pypdf
 from openai import OpenAI
 
@@ -66,6 +67,16 @@ def init_db():
                 attachment_data TEXT,
                 is_image BOOLEAN DEFAULT FALSE
             );
+            CREATE TABLE IF NOT EXISTS ai_chat_history (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) NOT NULL,
+                role VARCHAR(20) NOT NULL,
+                message TEXT,
+                attachment_name TEXT,
+                attachment_data TEXT,
+                is_image BOOLEAN DEFAULT FALSE,
+                time_str VARCHAR(50)
+            );
         """)
         c.execute("""
             INSERT INTO users (username, password, role) 
@@ -81,8 +92,9 @@ def init_db():
             ('ai_api_key', '')
             ON CONFLICT (key) DO NOTHING;
         """)
+        conn.commit()
     else:
-        c.execute("""
+        c.executescript("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
@@ -117,16 +129,26 @@ def init_db():
                 attachment_data TEXT,
                 is_image INTEGER DEFAULT 0
             );
+            CREATE TABLE IF NOT EXISTS ai_chat_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL,
+                role TEXT NOT NULL,
+                message TEXT,
+                attachment_name TEXT,
+                attachment_data TEXT,
+                is_image INTEGER DEFAULT 0,
+                time_str TEXT
+            );
+            INSERT OR IGNORE INTO users (username, password, role) VALUES ('dudo', 'dudo_2026', 'admin');
+            INSERT OR IGNORE INTO settings (key, value) VALUES ('banner', 'Добро пожаловать в закрытую платформу 8 «Б»!');
+            INSERT OR IGNORE INTO settings (key, value) VALUES ('system_prompt', 'Ты личный наставник 8 «Б» класса.');
+            INSERT OR IGNORE INTO settings (key, value) VALUES ('facts', 'По физике пишем единицы СИ.');
+            INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_base_url', 'https://api.openai.com/v1');
+            INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_model_id', 'gpt-4o-mini');
+            INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_api_key', '');
         """)
-        c.execute("INSERT OR IGNORE INTO users (username, password, role) VALUES ('dudo', 'dudo_2026', 'admin');")
-        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('banner', 'Добро пожаловать в закрытую платформу 8 «Б»!');")
-        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('system_prompt', 'Ты личный наставник 8 «Б» класса. Помогай решать задачи пошагово.');")
-        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('facts', 'По физике пишем единицы СИ.');")
-        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_base_url', 'https://api.openai.com/v1');")
-        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_model_id', 'gpt-4o-mini');")
-        c.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_api_key', '');")
+        conn.commit()
 
-    conn.commit()
     conn.close()
 
 init_db()
@@ -190,7 +212,6 @@ def login():
     user_id, uname, role, bound_token, avatar = user[0], user[1], user[2], user[3], user[4]
     session_token = uuid.uuid4().hex
 
-    # Device Lock (dudo входит без ограничений)
     if role != 'admin':
         if bound_token is None:
             c.execute(f"UPDATE users SET device_token={ph}, auth_token={ph} WHERE id={ph}", (device_token, session_token, user_id))
@@ -234,6 +255,7 @@ def update_profile():
     c = conn.cursor()
     ph = "%s" if IS_POSTGRES else "?"
     c.execute(f"UPDATE users SET username={ph}, avatar={ph} WHERE username={ph}", (new_name, avatar, username))
+    c.execute(f"UPDATE ai_chat_history SET username={ph} WHERE username={ph}", (new_name, username))
     conn.commit()
     conn.close()
     return jsonify({"success": True, "username": new_name, "avatar": avatar})
@@ -252,19 +274,58 @@ def dashboard():
         "homework": [{"id": h[0], "subject": h[1], "task": h[2], "deadline": h[3]} for h in hw]
     })
 
-# --- ОСНОВНОЙ ВЫЗОВ ИИ (OPENAI COMPATIBLE) ---
+# --- ИСТОРИЯ ЧАТА ДЛЯ ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ ---
+@app.route("/api/chat/history", methods=["POST"])
+def get_user_chat_history():
+    data = request.json or {}
+    username = data.get("username", "").strip().lower()
+
+    if not username:
+        return jsonify([])
+
+    conn = get_db()
+    c = conn.cursor()
+    ph = "%s" if IS_POSTGRES else "?"
+    c.execute(f"""
+        SELECT role, message, attachment_name, attachment_data, is_image, time_str 
+        FROM ai_chat_history 
+        WHERE username={ph} 
+        ORDER BY id ASC
+    """, (username,))
+    rows = c.fetchall()
+    conn.close()
+
+    return jsonify([{
+        "role": r[0],
+        "message": r[1],
+        "attachment_name": r[2],
+        "attachment_data": r[3],
+        "is_image": bool(r[4]),
+        "time": r[5]
+    } for r in rows])
+
+# --- ПОТОКОВЫЙ ВЫЗОВ ИИ (СОХРАНЕНИЕ В ИСТОРИЮ) ---
 @app.route("/api/chat", methods=["POST"])
 def chat():
     data = request.json or {}
     user_msg = data.get("message", "")
-    username = data.get("username", "Ученик")
+    username = data.get("username", "Ученик").strip().lower()
+    att_name = data.get("attachment_name")
     att_data = data.get("attachment_data")
-    is_img = data.get("is_image", False)
+    is_img = bool(data.get("is_image", False))
     t = get_msk_time()
 
-    # 1. Получаем базу заданий и конспектов
+    # 1. Сохраняем сообщение пользователя в историю
     conn = get_db()
     c = conn.cursor()
+    ph = "%s" if IS_POSTGRES else "?"
+    c.execute(f"""
+        INSERT INTO ai_chat_history (username, role, message, attachment_name, attachment_data, is_image, time_str)
+        VALUES ({ph}, 'user', {ph}, {ph}, {ph}, {ph}, {ph})
+    """, (username, user_msg, att_name, att_data, is_img, t["time"]))
+    conn.commit()
+
+    # 2. Получаем данные для контекста
     c.execute("SELECT subject, task, deadline FROM homework")
     hw_rows = c.fetchall()
     c.execute("SELECT filename, content FROM documents")
@@ -278,14 +339,13 @@ def chat():
 
     docs_str = "\n".join([f"[{d[0]}]: {d[1][:500]}" for d in doc_rows])
 
-    # 2. Формируем подробный системный контекст
     system_instruction = f"""
 {get_setting('system_prompt')}
 
 РЕАЛЬНЫЕ ДАННЫЕ В РЕАЛЬНОМ ВРЕМЕНИ:
 - Точное текущее время (МСК, Москва): {t['day']}, {t['date']}, время: {t['time']}.
 - Имя ученика: {username}.
-- Заметки и правила учителей: {get_setting('facts')}.
+- Заметки и подсказки об учителях: {get_setting('facts')}.
 
 АКТУАЛЬНАЯ БАЗА ДОМАШНИХ ЗАДАНИЙ 8 «Б» КЛАССА:
 {hw_list_str}
@@ -293,50 +353,70 @@ def chat():
 МАТЕРИАЛЫ И КОНСПЕКТЫ ИЗ УЧЕБНИКОВ:
 {docs_str}
 
-ИНСТРУКЦИИ ПО ОТВЕТАМ:
-1. Если ученик спрашивает «какая домашка?», «что задали?», «что по физике/алгебре?» — бери информацию ТОЛЬКО из списка актуальной базы выше. Учитывай сегодняшний день недели ({t['day']}) и дедлайны!
-2. Не придумывай домашку от себя, которой нет в базе. Если задания по предмету нет — так и скажи: «По этому предмету задания в базе пока нет».
-3. Отвечай дружелюбно, понятно для ученика 8 класса, помогай разбирать задачи пошагово.
+ИНСТРУКЦИИ:
+1. Если ученик спрашивает «какая домашка?», «что задали?» — бери информацию ТОЛЬКО из базы выше. Учитывай день недели ({t['day']}).
+2. Помогай решать задачи пошагово, не давай тупо ответ сразу.
 """
 
-    # 3. Настройки подключения к ИИ
     base_url = os.environ.get("AI_BASE_URL") or get_setting("ai_base_url", "https://api.openai.com/v1")
     api_key = os.environ.get("AI_API_KEY") or get_setting("ai_api_key", "")
     model_id = os.environ.get("AI_MODEL_ID") or get_setting("ai_model_id", "gpt-4o-mini")
 
-    if not api_key:
-        return jsonify({
-            "reply": "⚠️ API-ключ для нейросети еще не настроен! Администратор (dudo) должен указать Base URL, Model ID и API Key во вкладке «АДМИНКА»."
-        })
+    def event_stream():
+        if not api_key:
+            err_msg = "⚠️ API-ключ не настроен! Администратор (dudo) должен указать Base URL, Model ID и API Key во вкладке «АДМИНКА»."
+            yield f"data: {json.dumps({'error': err_msg})}\n\n"
+            yield "data: [DONE]\n\n"
+            return
 
-    try:
-        client = OpenAI(base_url=base_url.rstrip("/"), api_key=api_key)
+        full_bot_reply = ""
+        try:
+            client = OpenAI(base_url=base_url.rstrip("/"), api_key=api_key)
 
-        # Формируем сообщение пользователя (с поддержкой Vision для фото задач)
-        if att_data and is_img:
-            user_content = [
-                {"type": "text", "text": user_msg or "Помоги с этой задачей на фото."},
-                {"type": "image_url", "image_url": {"url": att_data}}
-            ]
-        else:
-            user_content = user_msg
+            if att_data and is_img:
+                user_content = [
+                    {"type": "text", "text": user_msg or "Помоги разобрать задачу с этого фото."},
+                    {"type": "image_url", "image_url": {"url": att_data}}
+                ]
+            else:
+                user_content = user_msg
 
-        response = client.chat.completions.create(
-            model=model_id,
-            messages=[
-                {"role": "system", "content": system_instruction},
-                {"role": "user", "content": user_content}
-            ],
-            temperature=0.7,
-            max_tokens=1500
-        )
-        bot_reply = response.choices[0].message.content
-        return jsonify({"reply": bot_reply})
+            stream = client.chat.completions.create(
+                model=model_id,
+                messages=[
+                    {"role": "system", "content": system_instruction},
+                    {"role": "user", "content": user_content}
+                ],
+                stream=True,
+                temperature=0.7,
+                max_tokens=1500
+            )
 
-    except Exception as e:
-        return jsonify({
-            "reply": f"❌ Ошибка вызова нейросети: {str(e)}\n\nПроверьте правильность Base URL, API Key и Model ID в панели администратора."
-        })
+            for chunk in stream:
+                if chunk.choices and len(chunk.choices) > 0:
+                    delta = chunk.choices[0].delta.content
+                    if delta:
+                        full_bot_reply += delta
+                        yield f"data: {json.dumps({'content': delta})}\n\n"
+
+            # 3. Сохраняем полный ответ бота в историю после окончания стрима
+            if full_bot_reply:
+                stream_conn = get_db()
+                sc = stream_conn.cursor()
+                sc.execute(f"""
+                    INSERT INTO ai_chat_history (username, role, message, time_str)
+                    VALUES ({ph}, 'bot', {ph}, {ph})
+                """, (username, full_bot_reply, t["time"]))
+                stream_conn.commit()
+                stream_conn.close()
+
+            yield "data: [DONE]\n\n"
+
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
+
+    return Response(stream_with_context(event_stream()), mimetype="text/event-stream")
 
 # --- ГРУППОВОЙ ЧАТ ---
 @app.route("/api/group/messages", methods=["GET"])
@@ -380,7 +460,8 @@ def group_send():
 
     return jsonify({"success": True, "time": time_str})
 
-# --- АДМИНКА (СТРОГО ДЛЯ DUDO) ---
+# --- АДМИНКА (СТРОГО ТОЛЬКО DUDO) ---
+
 @app.route("/api/admin/data", methods=["POST"])
 def admin_data():
     token = (request.json or {}).get("token")
@@ -405,6 +486,37 @@ def admin_data():
         "ai_model_id": get_setting("ai_model_id", "gpt-4o-mini"),
         "ai_api_key": get_setting("ai_api_key", "")
     })
+
+# Просмотр истории чата любого ученика админом dudo
+@app.route("/api/admin/user_chat", methods=["POST"])
+def admin_user_chat():
+    data = request.json or {}
+    token = data.get("token")
+    target_user = data.get("target_user", "").strip().lower()
+
+    if not verify_admin(token):
+        return jsonify({"error": "Доступ запрещен"}), 403
+
+    conn = get_db()
+    c = conn.cursor()
+    ph = "%s" if IS_POSTGRES else "?"
+    c.execute(f"""
+        SELECT role, message, attachment_name, attachment_data, is_image, time_str 
+        FROM ai_chat_history 
+        WHERE username={ph} 
+        ORDER BY id ASC
+    """, (target_user,))
+    rows = c.fetchall()
+    conn.close()
+
+    return jsonify([{
+        "role": r[0],
+        "message": r[1],
+        "attachment_name": r[2],
+        "attachment_data": r[3],
+        "is_image": bool(r[4]),
+        "time": r[5]
+    } for r in rows])
 
 @app.route("/api/admin/reset_device", methods=["POST"])
 def reset_device():
@@ -459,6 +571,32 @@ def save_settings():
         else:
             c.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (k, v))
 
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/admin/upload_doc", methods=["POST"])
+def upload_doc():
+    token = request.form.get("token")
+    if not verify_admin(token):
+        return jsonify({"error": "Доступ запрещен"}), 403
+
+    if 'file' not in request.files:
+        return jsonify({"success": False}), 400
+    file = request.files['file']
+    filename = file.filename
+    content = ""
+    if filename.endswith(".pdf"):
+        reader = pypdf.PdfReader(io.BytesIO(file.read()))
+        for p in reader.pages:
+            content += (p.extract_text() or "") + "\n"
+    else:
+        content = file.read().decode("utf-8", errors="ignore")
+
+    conn = get_db()
+    c = conn.cursor()
+    ph = "%s" if IS_POSTGRES else "?"
+    c.execute(f"INSERT INTO documents (filename, content) VALUES ({ph}, {ph})", (filename, content[:25000]))
     conn.commit()
     conn.close()
     return jsonify({"success": True})
