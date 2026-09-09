@@ -33,6 +33,7 @@ def init_db():
     c = conn.cursor()
 
     if IS_POSTGRES:
+        # 1. Создаем таблицы если их нет
         c.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -52,7 +53,7 @@ def init_db():
             );
             CREATE TABLE IF NOT EXISTS ai_chat_history (
                 id SERIAL PRIMARY KEY,
-                session_id VARCHAR(100) NOT NULL,
+                session_id VARCHAR(100),
                 username VARCHAR(100) NOT NULL,
                 role VARCHAR(20) NOT NULL,
                 message TEXT,
@@ -87,6 +88,18 @@ def init_db():
                 is_image BOOLEAN DEFAULT FALSE
             );
         """)
+
+        # 2. АВТО-МИГРАЦИЯ: добавляем недостающие колонки в существующие таблицы
+        c.execute("""
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_token TEXT;
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS device_token TEXT;
+            ALTER TABLE ai_chat_history ADD COLUMN IF NOT EXISTS session_id VARCHAR(100);
+            ALTER TABLE ai_chat_history ADD COLUMN IF NOT EXISTS attachment_name TEXT;
+            ALTER TABLE ai_chat_history ADD COLUMN IF NOT EXISTS attachment_data TEXT;
+            ALTER TABLE ai_chat_history ADD COLUMN IF NOT EXISTS is_image BOOLEAN DEFAULT FALSE;
+        """)
+
         c.execute("""
             INSERT INTO users (username, password, role) 
             VALUES ('dudo', 'dudo_2026', 'admin')
@@ -122,7 +135,7 @@ def init_db():
             );
             CREATE TABLE IF NOT EXISTS ai_chat_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT NOT NULL,
+                session_id TEXT,
                 username TEXT NOT NULL,
                 role TEXT NOT NULL,
                 message TEXT,
@@ -164,6 +177,11 @@ def init_db():
             INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_model_id', 'gpt-4o-mini');
             INSERT OR IGNORE INTO settings (key, value) VALUES ('ai_api_key', '');
         """)
+        # Миграция колонок для SQLite
+        c.execute("PRAGMA table_info(ai_chat_history)")
+        columns = [row[1] for row in c.fetchall()]
+        if 'session_id' not in columns:
+            c.execute("ALTER TABLE ai_chat_history ADD COLUMN session_id TEXT")
         conn.commit()
 
     conn.close()
@@ -412,7 +430,7 @@ def get_chat_history():
         "time": r[5]
     } for r in rows])
 
-# --- ВЫЗОВ ИИ (СТРИМИНГ БЕЗ БУФЕРИЗАЦИИ) ---
+# --- БЕЗОПАСНЫЙ ПОТОКОВЫЙ ВЫЗОВ ИИ ---
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
@@ -425,35 +443,39 @@ def chat():
     is_img = bool(data.get("is_image", False))
     t = get_msk_time()
 
-    conn = get_db()
-    c = conn.cursor()
-    ph = "%s" if IS_POSTGRES else "?"
+    try:
+        conn = get_db()
+        c = conn.cursor()
+        ph = "%s" if IS_POSTGRES else "?"
 
-    if not session_id:
-        session_id = uuid.uuid4().hex[:12]
-        c.execute(f"INSERT INTO chat_sessions (session_id, username, title) VALUES ({ph}, {ph}, 'Новый чат')", 
-                  (session_id, username))
+        if not session_id:
+            session_id = uuid.uuid4().hex[:12]
+            c.execute(f"INSERT INTO chat_sessions (session_id, username, title) VALUES ({ph}, {ph}, 'Новый чат')", 
+                      (session_id, username))
+            conn.commit()
+
+        c.execute(f"SELECT title FROM chat_sessions WHERE session_id={ph}", (session_id,))
+        s_row = c.fetchone()
+        if s_row and s_row[0] == "Новый чат":
+            auto_title = (user_msg or att_name or "Диалог")[:28]
+            c.execute(f"UPDATE chat_sessions SET title={ph} WHERE session_id={ph}", (auto_title, session_id))
+            conn.commit()
+
+        # Сохраняем запрос пользователя
+        c.execute(f"""
+            INSERT INTO ai_chat_history (session_id, username, role, message, attachment_name, attachment_data, is_image, time_str)
+            VALUES ({ph}, {ph}, 'user', {ph}, {ph}, {ph}, {ph}, {ph})
+        """, (session_id, username, user_msg, att_name, att_data, is_img, t["time"]))
         conn.commit()
 
-    c.execute(f"SELECT title FROM chat_sessions WHERE session_id={ph}", (session_id,))
-    s_row = c.fetchone()
-    if s_row and s_row[0] == "Новый чат":
-        auto_title = (user_msg or att_name or "Диалог")[:28]
-        c.execute(f"UPDATE chat_sessions SET title={ph} WHERE session_id={ph}", (auto_title, session_id))
-        conn.commit()
+        c.execute("SELECT subject, task, deadline FROM homework")
+        hw_rows = c.fetchall()
+        c.execute("SELECT filename, content FROM documents")
+        doc_rows = c.fetchall()
+        conn.close()
 
-    # Сохраняем запрос пользователя
-    c.execute(f"""
-        INSERT INTO ai_chat_history (session_id, username, role, message, attachment_name, attachment_data, is_image, time_str)
-        VALUES ({ph}, {ph}, 'user', {ph}, {ph}, {ph}, {ph}, {ph})
-    """, (session_id, username, user_msg, att_name, att_data, is_img, t["time"]))
-    conn.commit()
-
-    c.execute("SELECT subject, task, deadline FROM homework")
-    hw_rows = c.fetchall()
-    c.execute("SELECT filename, content FROM documents")
-    doc_rows = c.fetchall()
-    conn.close()
+    except Exception as db_err:
+        return jsonify({"error": f"Ошибка БД: {str(db_err)}"}), 500
 
     hw_list_str = "\n".join([f"- {h[0]}: {h[1]} (Сдать до: {h[2]})" for h in hw_rows]) if hw_rows else "Заданий в базе нет."
     docs_str = "\n".join([f"[{d[0]}]: {d[1][:500]}" for d in doc_rows])
@@ -483,7 +505,6 @@ def chat():
     model_id = os.environ.get("AI_MODEL_ID") or get_setting("ai_model_id", "gpt-4o-mini")
 
     def event_stream():
-        # Мгновенный пинг для принудительного сброса буфера прокси (Cloudflare/Railway)
         yield ": ping\n\n"
 
         if not api_key:
