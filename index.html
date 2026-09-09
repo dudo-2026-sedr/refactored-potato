@@ -5,11 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>8-B CORE // PLATFORM</title>
 
+  <!-- Шрифты: Plus Jakarta Sans и JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
+    /* ТЁМНАЯ ТЕМА (ПО ДЕФОЛТУ) */
     :root {
       --bg: #09090b;
       --surface: #121216;
@@ -30,6 +32,7 @@
       --radius-lg: 20px;
     }
 
+    /* СВЕТЛАЯ ТЕМА */
     body.theme-light {
       --bg: #f8fafc;
       --surface: #ffffff;
@@ -57,6 +60,11 @@
 
     .mono { font-family: 'JetBrains Mono', monospace; }
 
+    /* Кастомный скроллбар */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
     body {
       background: var(--bg);
       color: var(--text);
@@ -64,6 +72,7 @@
       justify-content: center;
       min-height: 100vh;
       overflow-x: hidden;
+      transition: background-color 0.2s, color 0.2s;
     }
 
     .app-frame {
@@ -113,7 +122,7 @@
     }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-    /* КНОПКА НАЗАД (РЕШАЕТ ПРОБЛЕМУ БАГА НАВИГАЦИИ) */
+    /* КНОПКА НАЗАД */
     .btn-back {
       display: none;
       align-items: center;
@@ -145,7 +154,7 @@
       background: var(--surface);
     }
 
-    /* ВКЛАДКИ */
+    /* НАВИГАЦИОННЫЕ ВКЛАДКИ */
     .nav-tabs {
       display: flex; padding: 6px 14px; background: var(--surface);
       border-bottom: 1px solid var(--border); gap: 4px; overflow-x: auto;
@@ -162,6 +171,7 @@
     .tab-btn.active { background: var(--accent); color: var(--accent-inv); }
     .tab-btn.active svg { stroke: var(--accent-inv); }
 
+    /* ЭКРАНЫ */
     .view-screen { display: none; flex-direction: column; flex: 1; }
     .view-screen.active { display: flex; }
 
@@ -225,7 +235,7 @@
       font-size: 0.75rem; margin-bottom: 4px;
     }
 
-    /* ИНПУТ */
+    /* ИНПУТ DOCK */
     .dock {
       padding: 10px 16px 14px; background: var(--bg); border-top: 1px solid var(--border);
       position: sticky; bottom: 0; z-index: 30; display: flex; flex-direction: column; gap: 6px;
@@ -282,7 +292,7 @@
       border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 700; cursor: pointer;
     }
 
-    /* МОДАЛКА ВХОДА */
+    /* АВТОРИЗАЦИЯ */
     .auth-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(16px);
       display: flex; justify-content: center; align-items: center; padding: 20px; z-index: 100;
@@ -300,10 +310,10 @@
 <body>
 
 <div class="app-frame">
-  <!-- ШАПКА -->
+  <!-- ВЕРХНЯЯ ШАПКА -->
   <header>
     <div class="brand-wrap">
-      <!-- КНОПКА НАЗАД (ПОЯВЛЯЕТСЯ ПРИ ВХОДЕ В ПРОФИЛЬ / АДМИНКУ) -->
+      <!-- КНОПКА «НАЗАД» -->
       <button class="btn-back mono" id="header-back-btn" onclick="goBack()">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         НАЗАД
@@ -317,13 +327,12 @@
         <div class="brand-title mono" id="header-title">8-B CORE</div>
         <div class="brand-meta mono" id="header-subtitle">
           <div class="live-dot"></div>
-          <span id="time-badge">СИНХРОНИЗАЦИЯ...</span>
+          <span id="time-badge">МСК // ВРЕМЯ...</span>
         </div>
       </div>
     </div>
 
     <div class="header-actions">
-      <!-- ТЕМА -->
       <button class="btn-icon" onclick="toggleTheme()" title="Сменить тему">
         <svg id="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke-width="2" style="display:none;">
           <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
@@ -333,13 +342,12 @@
         </svg>
       </button>
 
-      <!-- АВАТАРКА -->
       <img id="nav-avatar" class="header-avatar" src="" onclick="switchTab('profile')">
     </div>
   </header>
 
   <!-- ВКЛАДКИ -->
-  <nav class="nav-tabs mono" id="main-nav-tabs">
+  <nav class="nav-tabs mono">
     <button class="tab-btn active" onclick="switchTab('ai')">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
       ИИ ЧАТ
@@ -356,7 +364,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
       ПРОФИЛЬ
     </button>
-    <!-- ВКЛАДКА АДМИНА (ВИДНА ТОЛЬКО DUDO) -->
+    <!-- ТОЛЬКО ДЛЯ DUDO -->
     <button class="tab-btn" id="admin-tab-btn" style="display:none;" onclick="switchTab('admin')">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       АДМИН
@@ -383,7 +391,7 @@
         </div>
         <div class="msg-body">
           <div class="bubble-content">
-            Привет! Я настроен строго по школьной программе 8 «Б». Напиши вопрос или скинь фото задачи!
+            Привет! Я настроен строго по школьной программе 8 «Б». Знаю точное время и все задания из базы. Напиши задачу или скинь фото!
           </div>
         </div>
       </div>
@@ -397,10 +405,10 @@
       </div>
       <div class="input-shell">
         <input type="file" id="ai-file-input" style="display:none;" onchange="handleFileSelected(event, 'ai')">
-        <button class="btn-attach" onclick="document.getElementById('ai-file-input').click()" title="Прикрепить файл">
+        <button class="btn-attach" onclick="document.getElementById('ai-file-input').click()" title="Прикрепить файл или фото">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
         </button>
-        <input type="text" class="text-input" id="ai-input" placeholder="Задай вопрос по ДЗ..." onkeydown="if(event.key==='Enter') sendAiMessage()">
+        <input type="text" class="text-input" id="ai-input" placeholder="Задай вопрос или спроси про ДЗ..." onkeydown="if(event.key==='Enter') sendAiMessage()">
         <button class="btn-send" onclick="sendAiMessage()">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </button>
@@ -422,7 +430,7 @@
         <button class="btn-attach" onclick="document.getElementById('group-file-input').click()" title="Отправить фото">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
         </button>
-        <input type="text" class="text-input" id="group-input" placeholder="Написать в класс..." onkeydown="if(event.key==='Enter') sendGroupMessage()">
+        <input type="text" class="text-input" id="group-input" placeholder="Написать в классный чат..." onkeydown="if(event.key==='Enter') sendGroupMessage()">
         <button class="btn-send" onclick="sendGroupMessage()">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
         </button>
@@ -458,34 +466,60 @@
   <!-- 5. АДМИНКА (СТРОГО ТОЛЬКО ДЛЯ DUDO) -->
   <div class="view-screen" id="view-admin">
     <div style="padding:16px; display:flex; flex-direction:column; gap:16px;">
+      
+      <!-- ПОДКЛЮЧЕНИЕ ИИ -->
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
-        <div class="mono" style="font-weight:700; font-size:0.85rem;">📚 ДОБАВИТЬ ЗАДАНИЕ В ДЗ</div>
+        <div class="mono" style="font-weight:700; font-size:0.85rem;">🤖 ПОДКЛЮЧЕНИЕ НЕЙРОСЕТИ (OPENAI ФОРМАТ)</div>
+        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">BASE URL (ЭНДПОИНТ):</label>
+        <input type="text" id="adm-ai-url" class="form-input" placeholder="https://api.openai.com/v1">
+        
+        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">MODEL ID (ИМЯ МОДЕЛИ):</label>
+        <input type="text" id="adm-ai-model" class="form-input" placeholder="gpt-4o-mini, deepseek-chat...">
+
+        <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">API KEY:</label>
+        <input type="password" id="adm-ai-key" class="form-input" placeholder="sk-...">
+      </div>
+
+      <!-- ДОБАВЛЕНИЕ ДЗ -->
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
+        <div class="mono" style="font-weight:700; font-size:0.85rem;">📚 ДОБАВИТЬ ЗАДАНИЕ В БАЗУ ДЗ</div>
         <input type="text" id="adm-subj" class="form-input" placeholder="Предмет (например: Алгебра)">
         <input type="text" id="adm-task" class="form-input" placeholder="Задание (например: № 215, 218)">
         <input type="text" id="adm-date" class="form-input mono" placeholder="Срок сдачи (например: Четверг)">
         <button class="btn-solid mono" onclick="addHwAdmin()">ОПУБЛИКОВАТЬ ДЗ</button>
       </div>
 
+      <!-- СБРОС УСТРОЙСТВ -->
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
         <div class="mono" style="font-weight:700; font-size:0.85rem;">👥 СБРОС УСТРОЙСТВ ОДНОКЛАССНИКОВ</div>
         <div id="adm-users-list"></div>
       </div>
 
+      <!-- ПРАВИЛА И БАННЕР -->
       <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
-        <div class="mono" style="font-weight:700; font-size:0.85rem;">🧠 МОЗГИ ИИ И БАННЕР КЛАССА</div>
+        <div class="mono" style="font-weight:700; font-size:0.85rem;">🧠 ПРАВИЛА ИИ И БАННЕР КЛАССА</div>
         <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">СИСТЕМНЫЙ ПРОМПТ:</label>
         <textarea id="adm-prompt" class="form-input" rows="2"></textarea>
         <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">ФАКТЫ И ИНСАЙДЫ УЧИТЕЛЕЙ:</label>
         <textarea id="adm-facts" class="form-input" rows="2"></textarea>
         <label class="mono" style="font-size:0.7rem; color:var(--text-dim)">СРОЧНЫЙ БАННЕР:</label>
         <input type="text" id="adm-banner" class="form-input">
-        <button class="btn-solid mono" onclick="saveSettingsAdmin()">СОХРАНИТЬ НАСТРОЙКИ</button>
+        <button class="btn-solid mono" onclick="saveSettingsAdmin()">СОХРАНИТЬ ВСЕ НАСТРОЙКИ</button>
       </div>
+
+      <!-- ЗАГРУЗКА УЧЕБНИКОВ -->
+      <div style="background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px;">
+        <div class="mono" style="font-weight:700; font-size:0.85rem;">📁 БАЗА ЗНАНИЙ (УЧЕБНИКИ PDF / TXT)</div>
+        <input type="file" id="adm-doc-file" class="form-input" style="padding:6px;">
+        <button class="btn-solid mono" onclick="adminUploadFile()">ЗАГРУЗИТЬ В ПАМЯТЬ ИИ</button>
+        <div id="adm-docs-status" class="mono" style="font-size:0.72rem; color:var(--text-dim);"></div>
+      </div>
+
     </div>
   </div>
 </div>
 
-<!-- ОКНО ВХОДА -->
+<!-- ОКНО ВХОДА (DEVICE LOCK) -->
 <div class="auth-overlay" id="auth-modal">
   <div class="auth-box">
     <div style="display:flex; align-items:center; gap:10px;">
@@ -526,11 +560,10 @@
   // СЕССИЯ
   const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23888'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E";
   let currentUser = JSON.parse(localStorage.getItem('school_user') || 'null');
-  let lastTab = 'ai'; // Запоминает экран для возврата кнопкой Назад
+  let lastTab = 'ai';
 
   if (currentUser) {
     document.getElementById('auth-modal').style.display = 'none';
-    // Проверка: админка строго для dudo
     if (currentUser.role === 'admin' && currentUser.name.toLowerCase() === 'dudo') {
       document.getElementById('admin-tab-btn').style.display = 'flex';
     }
@@ -612,7 +645,7 @@
       currentUser.name = newName;
       localStorage.setItem('school_user', JSON.stringify(currentUser));
       updateProfileUI();
-      alert("Профиль обновлен!");
+      alert("Профиль сохранен!");
     } else {
       alert(d.error || "Ошибка сохранения");
     }
@@ -704,7 +737,13 @@
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ message: txt, username: currentUser.name, attachment_name: att ? att.name : null })
+      body: JSON.stringify({ 
+        message: txt, 
+        username: currentUser.name, 
+        attachment_name: att ? att.name : null,
+        attachment_data: att ? att.data : null,
+        is_image: att ? att.isImage : false
+      })
     });
     const d = await res.json();
     appendMsg('ai', d.reply, 'bot', '8-B AI', null, null);
@@ -730,7 +769,7 @@
     } catch(e) {}
   }
 
-  // Авто-обновление чата класса раз в 4 секунды
+  // Авто-обновление группового чата каждые 4 секунды
   setInterval(() => {
     const groupView = document.getElementById('view-group');
     if (groupView && groupView.classList.contains('active')) {
@@ -789,11 +828,12 @@
     box.scrollTop = box.scrollHeight;
   }
 
+  // ЗАГРУЗКА ДАННЫХ ДАШБОРДА
   async function initApp() {
     const res = await fetch('/api/dashboard');
     const d = await res.json();
 
-    document.getElementById('time-badge').innerText = `${d.time.day.toUpperCase()} // ${d.time.time}`;
+    document.getElementById('time-badge').innerText = `МСК: ${d.time.day.toUpperCase()} // ${d.time.time}`;
     document.getElementById('ann-text').innerText = d.banner;
 
     const hwBox = document.getElementById('hw-list-container');
@@ -830,15 +870,18 @@
       body: JSON.stringify({ token: currentUser.token })
     });
     if (!res.ok) {
-      alert("Доступ запрещен. Только для dudo.");
+      alert("Доступ разрешен только dudo.");
       switchTab('ai');
       return;
     }
     const d = await res.json();
 
-    document.getElementById('adm-prompt').value = d.system_prompt;
-    document.getElementById('adm-facts').value = d.facts;
-    document.getElementById('adm-banner').value = d.banner;
+    document.getElementById('adm-prompt').value = d.system_prompt || '';
+    document.getElementById('adm-facts').value = d.facts || '';
+    document.getElementById('adm-banner').value = d.banner || '';
+    document.getElementById('adm-ai-url').value = d.ai_base_url || '';
+    document.getElementById('adm-ai-model').value = d.ai_model_id || '';
+    document.getElementById('adm-ai-key').value = d.ai_api_key || '';
 
     const uList = document.getElementById('adm-users-list');
     uList.innerHTML = '';
@@ -850,6 +893,8 @@
         </div>
       `;
     });
+
+    document.getElementById('adm-docs-status').innerText = "Активные конспекты в памяти: " + (d.documents.map(x => x.filename).join(', ') || 'нет');
   }
 
   async function resetDev(id) {
@@ -887,11 +932,30 @@
         token: currentUser.token,
         system_prompt: document.getElementById('adm-prompt').value,
         facts: document.getElementById('adm-facts').value,
-        banner: document.getElementById('adm-banner').value
+        banner: document.getElementById('adm-banner').value,
+        ai_base_url: document.getElementById('adm-ai-url').value.trim(),
+        ai_model_id: document.getElementById('adm-ai-model').value.trim(),
+        ai_api_key: document.getElementById('adm-ai-key').value.trim()
       })
     });
-    alert("Настройки применены!");
+    alert("Все настройки и ключи ИИ успешно сохранены!");
     initApp();
+  }
+
+  async function adminUploadFile() {
+    const file = document.getElementById('adm-doc-file').files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('token', currentUser.token);
+
+    const res = await fetch('/api/admin/upload_doc', { method: 'POST', body: fd });
+    if (res.ok) {
+      alert("Учебник/конспект добавлен в память нейросети!");
+      loadAdminData();
+    } else {
+      alert("Ошибка при загрузке документа");
+    }
   }
 </script>
 </body>
