@@ -323,7 +323,7 @@ def api_chat_history():
     """, (session_id,), fetchall=True)
     return jsonify(history)
 
-# --- ИИ ЧАТ (ОТДАЕТ СТРОГО ЧИСТЫЙ ОТВЕТ БЕЗ МЫСЛЕЙ И ЧЕРНОВИКОВ) ---
+# --- ИИ ЧАТ (ИСПРАВЛЕНА СОВМЕСТИМОСТЬ РОЛЕЙ: 'bot' -> 'assistant') ---
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
     data = request.get_json() or {}
@@ -339,6 +339,7 @@ def api_chat():
         execute_query("INSERT INTO chat_sessions (session_id, username, title) VALUES (?, ?, ?)",
                       (session_id, username, user_msg[:30] if user_msg else "Новый чат"), commit=True)
 
+    # Сохраняем сообщение пользователя в базу данных
     execute_query("""
         INSERT INTO chat_history (session_id, username, role, message, attachment_name, attachment_data, is_image) 
         VALUES (?, ?, 'user', ?, ?, ?, ?)
@@ -362,23 +363,28 @@ def api_chat():
 
     full_system = f"{sys_prompt}\n\nВАЖНЫЕ ФАКТЫ О КЛАССЕ:\n{facts}{kb_context}".strip()
 
+    # Загружаем последние 8 сообщений из истории диалога
     raw_history = execute_query("""
         SELECT role, message, attachment_data, is_image 
         FROM chat_history 
         WHERE session_id = ? 
-        ORDER BY id DESC LIMIT 12
+        ORDER BY id DESC LIMIT 8
     """, (session_id,), fetchall=True)
     raw_history.reverse()
 
     openai_messages = [{"role": "system", "content": full_system}]
 
     for idx, item in enumerate(raw_history):
-        role = item['role']
+        # ИСПРАВЛЕНИЕ: строго переводим 'bot' в 'assistant'
+        raw_role = item['role']
+        valid_role = "assistant" if raw_role in ['bot', 'assistant'] else "user"
+        
         txt = item['message'] or ""
         img_data = item.get('attachment_data')
         is_i = item.get('is_image')
 
-        if idx == len(raw_history) - 1 and role == 'user' and is_i and img_data:
+        # Если это последнее сообщение пользователя и прикреплено фото
+        if idx == len(raw_history) - 1 and valid_role == 'user' and is_i and img_data:
             openai_messages.append({
                 "role": "user",
                 "content": [
@@ -387,7 +393,7 @@ def api_chat():
                 ]
             })
         else:
-            openai_messages.append({"role": role, "content": txt})
+            openai_messages.append({"role": valid_role, "content": txt})
 
     def generate():
         yield f"data: {json.dumps({'session_id': session_id})}\n\n"
@@ -415,12 +421,11 @@ def api_chat():
                     continue
                 delta = chunk.choices[0].delta
 
-                # БЕРЕМ ТОЛЬКО delta.content! Поле reasoning_content полностью отбрасываем
+                # Забираем только чистый ответ (content). Черновики reasoning отбрасываем
                 text_chunk = getattr(delta, 'content', None)
                 if not text_chunk:
                     continue
 
-                # Страховка: если модель случайно выводит теги <think>...</think> прямо в текст ответа
                 if '<think>' in text_chunk:
                     in_think = True
                     text_chunk = text_chunk.split('<think>', 1)[0]
