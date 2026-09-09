@@ -3,7 +3,6 @@ import sys
 import json
 import uuid
 import base64
-import hashlib
 from datetime import datetime, timezone, timedelta
 from flask import Flask, request, jsonify, render_template, Response
 from openai import OpenAI
@@ -40,7 +39,6 @@ def execute_query(query, params=(), commit=False, fetchone=False, fetchall=False
     conn = get_db()
     try:
         if IS_POSTGRES:
-            # Преобразуем ? в %s для PostgreSQL
             query = query.replace("?", "%s")
             with conn.cursor() as cur:
                 cur.execute(query, params)
@@ -141,7 +139,7 @@ def init_db():
         )
     """, commit=True)
 
-    # 7. Таблица базы знаний (файлы для обучения ИИ)
+    # 7. Таблица базы знаний
     execute_query(f"""
         CREATE TABLE IF NOT EXISTS knowledge_files (
             id {auto_inc},
@@ -163,7 +161,7 @@ def init_db():
 
     # Настройки по умолчанию
     default_settings = {
-        'system_prompt': 'Ты — персональный репетитор и наставник для учеников 8 «Б» класса. Помогай с домашними заданиями, объясняй школьные темы доступно и понятно, разбирай формулы по шагам.',
+        'system_prompt': 'Ты — персональный репетитор и наставник для учеников 8 «Б» класса. Помогай с домашними заданиями, объясняй школьные темы доступно и понятно, разбирай формулы по шагам. Отвечай всегда строго на русском языке, формулы оформляй в стандартном LaTeX формате ($...$ или $$...$$).',
         'facts': 'Класс: 8 «Б». Программа углубленная.',
         'banner': 'Добро пожаловать в рабочую платформу 8 «Б» класса!',
         'ai_base_url': 'https://api.openai.com/v1',
@@ -216,7 +214,6 @@ def api_login():
     if user['password'] != password:
         return jsonify({'success': False, 'error': 'Неверный пароль'})
 
-    # Проверка привязки к устройству
     if user['device_token'] and user['device_token'] != device_token:
         return jsonify({'success': False, 'error': 'Аккаунт уже привязан к другому телефону. Обратитесь к dudo для сброса.'})
 
@@ -326,7 +323,7 @@ def api_chat_history():
     """, (session_id,), fetchall=True)
     return jsonify(history)
 
-# --- ИИ ЧАТ (СТРИМИНГ С ПОДДЕРЖКОЙ REASONING И 8192 ТОКЕНАМИ) ---
+# --- ИИ ЧАТ (ОТДАЕТ СТРОГО ЧИСТЫЙ ОТВЕТ БЕЗ МЫСЛЕЙ И ЧЕРНОВИКОВ) ---
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
     data = request.get_json() or {}
@@ -342,26 +339,22 @@ def api_chat():
         execute_query("INSERT INTO chat_sessions (session_id, username, title) VALUES (?, ?, ?)",
                       (session_id, username, user_msg[:30] if user_msg else "Новый чат"), commit=True)
 
-    # Сохраняем сообщение пользователя в БД
     execute_query("""
         INSERT INTO chat_history (session_id, username, role, message, attachment_name, attachment_data, is_image) 
         VALUES (?, ?, 'user', ?, ?, ?, ?)
     """, (session_id, username, user_msg, att_name, att_data, is_img), commit=True)
 
-    # Обновляем заголовок сессии, если это первое сообщение
     sess = execute_query("SELECT title FROM chat_sessions WHERE session_id = ?", (session_id,), fetchone=True)
     if sess and sess.get('title') == "Новый чат" and user_msg:
         execute_query("UPDATE chat_sessions SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE session_id = ?", 
                       (user_msg[:35], session_id), commit=True)
 
-    # Загружаем настройки ИИ
     ai_url = get_setting('ai_base_url', 'https://api.openai.com/v1').strip()
     ai_model = get_setting('ai_model_id', 'glm-5.3-flash').strip()
     ai_key = get_setting('ai_api_key', '').strip()
     sys_prompt = get_setting('system_prompt', '')
     facts = get_setting('facts', '')
 
-    # Загружаем базу знаний (файлы админа)
     kb_records = execute_query("SELECT filename, extracted_text FROM knowledge_files", fetchall=True)
     kb_context = ""
     if kb_records:
@@ -369,7 +362,6 @@ def api_chat():
 
     full_system = f"{sys_prompt}\n\nВАЖНЫЕ ФАКТЫ О КЛАССЕ:\n{facts}{kb_context}".strip()
 
-    # Загружаем историю диалога (последние 12 сообщений)
     raw_history = execute_query("""
         SELECT role, message, attachment_data, is_image 
         FROM chat_history 
@@ -386,7 +378,6 @@ def api_chat():
         img_data = item.get('attachment_data')
         is_i = item.get('is_image')
 
-        # Если это последнее сообщение пользователя и прикреплено фото
         if idx == len(raw_history) - 1 and role == 'user' and is_i and img_data:
             openai_messages.append({
                 "role": "user",
@@ -399,7 +390,6 @@ def api_chat():
             openai_messages.append({"role": role, "content": txt})
 
     def generate():
-        # Передаем session_id клиенту
         yield f"data: {json.dumps({'session_id': session_id})}\n\n"
 
         if not ai_key:
@@ -409,7 +399,6 @@ def api_chat():
         try:
             client = OpenAI(api_key=ai_key, base_url=ai_url)
 
-            # Вызов модели с max_tokens=8192
             response = client.chat.completions.create(
                 model=ai_model,
                 messages=openai_messages,
@@ -419,24 +408,34 @@ def api_chat():
             )
 
             full_reply = ""
+            in_think = False
+
             for chunk in response:
                 if not chunk.choices:
                     continue
                 delta = chunk.choices[0].delta
 
-                # ПОДДЕРЖКА REASONING (GLM-5.3-Flash, DeepSeek-R1, QwQ):
-                # Проверяем content, reasoning_content и reasoning
+                # БЕРЕМ ТОЛЬКО delta.content! Поле reasoning_content полностью отбрасываем
                 text_chunk = getattr(delta, 'content', None)
-                reasoning_chunk = getattr(delta, 'reasoning_content', None) or getattr(delta, 'reasoning', None)
+                if not text_chunk:
+                    continue
 
-                content_piece = text_chunk if text_chunk else reasoning_chunk
+                # Страховка: если модель случайно выводит теги <think>...</think> прямо в текст ответа
+                if '<think>' in text_chunk:
+                    in_think = True
+                    text_chunk = text_chunk.split('<think>', 1)[0]
+                if in_think:
+                    if '</think>' in text_chunk:
+                        in_think = False
+                        text_chunk = text_chunk.split('</think>', 1)[1]
+                    else:
+                        continue
 
-                if content_piece:
-                    full_reply += content_piece
-                    yield f"data: {json.dumps({'content': content_piece})}\n\n"
+                if text_chunk:
+                    full_reply += text_chunk
+                    yield f"data: {json.dumps({'content': text_chunk})}\n\n"
 
             if full_reply:
-                # Сохраняем ответ ИИ в базу данных
                 execute_query("""
                     INSERT INTO chat_history (session_id, username, role, message) 
                     VALUES (?, '8-B AI', 'bot', ?)
@@ -494,7 +493,6 @@ def api_admin_data():
 
     users = execute_query("SELECT id, username, device_token FROM users ORDER BY id ASC", fetchall=True)
     user_list = [{'id': u['id'], 'username': u['username'], 'is_locked': bool(u['device_token'])} for u in users]
-
     kb_files = execute_query("SELECT id, filename FROM knowledge_files ORDER BY id DESC", fetchall=True)
 
     return jsonify({
@@ -508,7 +506,7 @@ def api_admin_data():
         'knowledge_files': kb_files
     })
 
-# 1. Создание нового пользователя
+# 1. Создание пользователя
 @app.route('/api/admin/create_user', methods=['POST'])
 def api_admin_create_user():
     data = request.get_json() or {}
@@ -528,7 +526,7 @@ def api_admin_create_user():
                   (username, password), commit=True)
     return jsonify({'success': True})
 
-# 2. Загрузка файла в базу знаний (PDF/TXT)
+# 2. Загрузка файла в базу знаний
 @app.route('/api/admin/upload_knowledge', methods=['POST'])
 def api_admin_upload_knowledge():
     data = request.get_json() or {}
@@ -543,7 +541,6 @@ def api_admin_upload_knowledge():
         if "," in file_data:
             raw_b64 = file_data.split(",", 1)[1]
             decoded_bytes = base64.b64decode(raw_b64)
-            # Извлекаем простой текст для текстовых файлов
             extracted_text = decoded_bytes.decode('utf-8', errors='ignore')
     except Exception as e:
         extracted_text = f"[Ошибка чтения текста: {e}]"
@@ -583,7 +580,7 @@ def api_admin_user_chats():
     """, (target_user,), fetchall=True)
     return jsonify(sessions)
 
-# 5. Просмотр сообщений диалога ученика
+# 5. Просмотр сообщений ученика
 @app.route('/api/admin/user_chat_messages', methods=['POST'])
 def api_admin_user_chat_messages():
     data = request.get_json() or {}
@@ -626,7 +623,7 @@ def api_admin_save_hw():
                       (subj, task, date), commit=True)
     return jsonify({'success': True})
 
-# 8. Сохранение настроек ИИ и платформы
+# 8. Сохранение настроек
 @app.route('/api/admin/save_settings', methods=['POST'])
 def api_admin_save_settings():
     data = request.get_json() or {}
