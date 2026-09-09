@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- БИБЛИОТЕКИ ДЛЯ РЕНДЕРИНГА ФОРМУЛ (KATEX) И РАЗМЕТКИ (MARKED) -->
+  <!-- РЕНДЕРИНГ ФОРМУЛ (KATEX) И РАЗМЕТКИ (MARKED) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
@@ -175,7 +175,6 @@
       background: rgba(125, 125, 125, 0.15); padding: 2px 5px; border-radius: 4px;
     }
 
-    /* ДРОБИ И ФОРМУЛЫ KATEX */
     .katex { font-size: 1.05em; line-height: 1.2; }
     .katex-display { margin: 10px 0 !important; overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
 
@@ -532,7 +531,6 @@
       return;
     }
     try {
-      // 1. Рендерим заголовки, списки, жирный текст через Marked
       if (typeof marked !== 'undefined') {
         marked.setOptions({ breaks: true, gfm: true });
         container.innerHTML = marked.parse(rawText);
@@ -540,7 +538,6 @@
         container.innerText = rawText;
       }
 
-      // 2. Превращаем $$ формулы $$ и $ формулы $ в настоящие дроби через KaTeX
       if (window.renderMathInElement) {
         renderMathInElement(container, {
           delimiters: [
@@ -983,16 +980,23 @@
     setAiLoadingState(false);
   }
 
-  // --- ПОТОКОВЫЙ ВЫЗОВ ИИ С ФОРМАТИРОВАНИЕМ ДРОБЕЙ И ТЕГОВ ---
+  // --- ПОТОКОВЫЙ ВЫЗОВ ИИ (ПЕРЕДАЧА ВРЕМЕНИ ТЕЛЕФОНА + KATEX) ---
   async function sendAiMessage() {
     const input = document.getElementById('ai-input');
     const txt = input.value.trim();
     const att = attachments.ai;
     if (!txt && !att) return;
 
+    // В интерфейсе показываем чистый текст ученика
     appendMsg('ai', txt, 'user', currentUser.name, currentUser.avatar, att);
     input.value = '';
     clearAttachment('ai');
+
+    // Берем точное локальное время и день недели с устройства
+    const now = new Date();
+    const days = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
+    const timePrompt = `[Время на устройстве ученика: ${days[now.getDay()]}, ${now.toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}] `;
+    const outgoingMessage = txt ? (timePrompt + txt) : timePrompt;
 
     const box = document.getElementById('ai-chat-stream');
     const wrap = document.createElement('div');
@@ -1029,7 +1033,7 @@
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ 
-          message: txt, 
+          message: outgoingMessage, 
           username: currentUser.name,
           session_id: currentSessionId,
           attachment_name: att ? att.name : null,
@@ -1079,7 +1083,6 @@
                     isFirstChunk = false;
                   }
                   fullResponse += p.content;
-                  // Рендерим Markdown и дроби на лету
                   renderFormattedContent(bubbleContent, fullResponse);
                   box.scrollTop = box.scrollHeight;
                 } else if (p.error) {
@@ -1159,6 +1162,9 @@
   }
 
   function appendMsg(view, text, role, name, avatar, att) {
+    // Вырезаем технический штамп времени из интерфейса
+    const displayText = (text || '').replace(/^\[Время на устройстве ученика:[^\]]+\]\s*/, '');
+
     const box = document.getElementById(`${view}-chat-stream`);
     const wrap = document.createElement('div');
     wrap.className = `message-wrap ${role}`;
@@ -1185,9 +1191,9 @@
     
     const textNode = wrap.querySelector('.text-inner');
     if (role === 'bot') {
-      renderFormattedContent(textNode, text || '');
+      renderFormattedContent(textNode, displayText);
     } else {
-      textNode.innerText = text || '';
+      textNode.innerText = displayText;
     }
 
     box.scrollTop = box.scrollHeight;
@@ -1389,6 +1395,7 @@
 
     msgs.forEach(m => {
       const isUser = m.role === 'user';
+      const cleanMsg = (m.message || '').replace(/^\[Время на устройстве ученика:[^\]]+\]\s*/, '');
       box.innerHTML += `
         <div style="padding:6px 8px; border-radius:6px; background:${isUser ? 'var(--surface-elevated)' : 'var(--surface)'}; font-size:0.78rem; border:1px solid var(--border);">
           <div class="mono" style="font-size:0.65rem; color:var(--text-dim); margin-bottom:2px;">
@@ -1396,7 +1403,7 @@
           </div>
           ${m.attachment_name ? `<div class="mono" style="font-size:0.7rem; color:var(--accent);">📁 ${escapeHtml(m.attachment_name)}</div>` : ''}
           ${m.attachment_data && m.is_image ? `<img src="${m.attachment_data}" style="max-width:120px; border-radius:4px; margin:4px 0; display:block;">` : ''}
-          <div class="adm-msg-text" style="white-space:pre-wrap;">${escapeHtml(m.message || '')}</div>
+          <div class="adm-msg-text" style="white-space:pre-wrap;">${escapeHtml(cleanMsg)}</div>
         </div>
       `;
     });
