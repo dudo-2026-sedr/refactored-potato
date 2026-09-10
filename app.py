@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import json
 import uuid
 import base64
@@ -358,7 +359,7 @@ def api_chat():
 
     sess = execute_query("SELECT title FROM chat_sessions WHERE session_id = ?", (session_id,), fetchone=True)
     if sess and sess.get('title') == "Новый чат" and user_msg:
-        clean_title = (user_msg or '').replace(/^\[Время на устройстве ученика:[^\]]+\]\s*/, '')
+        clean_title = re.sub(r'^\[Время на устройстве ученика:[^\]]+\]\s*', '', user_msg or '')
         execute_query("UPDATE chat_sessions SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE session_id = ?", 
                       (clean_title[:35] if clean_title else "Диалог", session_id), commit=True)
 
