@@ -88,6 +88,16 @@ def init_db():
         )
     """, commit=True)
 
+    # АВТОМИГРАЦИЯ: добавление колонок для ранее созданных таблиц
+    for col in ['token', 'device_token', 'avatar', 'role']:
+        try:
+            if IS_POSTGRES:
+                execute_query(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} TEXT", commit=True)
+            else:
+                execute_query(f"ALTER TABLE users ADD COLUMN {col} TEXT", commit=True)
+        except Exception:
+            pass
+
     # 3. Таблица сессий чатов
     execute_query(f"""
         CREATE TABLE IF NOT EXISTS chat_sessions (
@@ -214,10 +224,11 @@ def api_login():
     if user['password'] != password:
         return jsonify({'success': False, 'error': 'Неверный пароль'})
 
-    if user['device_token'] and user['device_token'] != device_token:
+    # Проверка привязки к устройству
+    if user.get('device_token') and user['device_token'] != device_token:
         return jsonify({'success': False, 'error': 'Аккаунт уже привязан к другому телефону. Обратитесь к dudo для сброса.'})
 
-    if not user['device_token'] and device_token:
+    if not user.get('device_token') and device_token:
         execute_query("UPDATE users SET device_token = ? WHERE id = ?", (device_token, user['id']), commit=True)
 
     if not user.get('token'):
@@ -323,7 +334,7 @@ def api_chat_history():
     """, (session_id,), fetchall=True)
     return jsonify(history)
 
-# --- ИИ ЧАТ (ИСПРАВЛЕНА СОВМЕСТИМОСТЬ РОЛЕЙ: 'bot' -> 'assistant') ---
+# --- ИИ ЧАТ ---
 @app.route('/api/chat', methods=['POST'])
 def api_chat():
     data = request.get_json() or {}
@@ -347,8 +358,9 @@ def api_chat():
 
     sess = execute_query("SELECT title FROM chat_sessions WHERE session_id = ?", (session_id,), fetchone=True)
     if sess and sess.get('title') == "Новый чат" and user_msg:
+        clean_title = (user_msg or '').replace(/^\[Время на устройстве ученика:[^\]]+\]\s*/, '')
         execute_query("UPDATE chat_sessions SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE session_id = ?", 
-                      (user_msg[:35], session_id), commit=True)
+                      (clean_title[:35] if clean_title else "Диалог", session_id), commit=True)
 
     ai_url = get_setting('ai_base_url', 'https://api.openai.com/v1').strip()
     ai_model = get_setting('ai_model_id', 'glm-5.3-flash').strip()
@@ -375,7 +387,6 @@ def api_chat():
     openai_messages = [{"role": "system", "content": full_system}]
 
     for idx, item in enumerate(raw_history):
-        # ИСПРАВЛЕНИЕ: строго переводим 'bot' в 'assistant'
         raw_role = item['role']
         valid_role = "assistant" if raw_role in ['bot', 'assistant'] else "user"
         
@@ -383,7 +394,6 @@ def api_chat():
         img_data = item.get('attachment_data')
         is_i = item.get('is_image')
 
-        # Если это последнее сообщение пользователя и прикреплено фото
         if idx == len(raw_history) - 1 and valid_role == 'user' and is_i and img_data:
             openai_messages.append({
                 "role": "user",
@@ -421,7 +431,6 @@ def api_chat():
                     continue
                 delta = chunk.choices[0].delta
 
-                # Забираем только чистый ответ (content). Черновики reasoning отбрасываем
                 text_chunk = getattr(delta, 'content', None)
                 if not text_chunk:
                     continue
@@ -497,7 +506,7 @@ def api_admin_data():
         return jsonify({'error': 'Доступ запрещен'}), 403
 
     users = execute_query("SELECT id, username, device_token FROM users ORDER BY id ASC", fetchall=True)
-    user_list = [{'id': u['id'], 'username': u['username'], 'is_locked': bool(u['device_token'])} for u in users]
+    user_list = [{'id': u['id'], 'username': u['username'], 'is_locked': bool(u.get('device_token'))} for u in users]
     kb_files = execute_query("SELECT id, filename FROM knowledge_files ORDER BY id DESC", fetchall=True)
 
     return jsonify({
